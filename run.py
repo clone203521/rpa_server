@@ -1,17 +1,23 @@
-import datetime
+import inspect
 import os
-import time
+import random
+import threading
 
 import pandas as pd
-from flask import Flask, render_template, redirect, url_for, request
+from flask import Flask, render_template, request
 from flask_cors import CORS
 from loguru import logger
 
+import database_util as dbu
+import listener_facebook_process as listen_face
+import open_broswer as open_b
 from models import AccessRecord, db
 
 app = Flask(__name__, template_folder='templates')
 app.config.from_object('config.Config')
 db.init_app(app)
+dbs = db.session
+local_url = 'http://fbmessage.v7.idcfengye.com'
 
 CORS(app)  # 启用 CORS 支持
 
@@ -19,11 +25,6 @@ CORS(app)  # 启用 CORS 支持
 with app.app_context():
     # 在应用上下文中执行数据库操作
     db.create_all()
-
-
-# @before_first_request
-# def run_on_startup():
-#     # 在这里运行您希望在 Flask 服务器启动时执行的代码
 
 
 @app.route('/')
@@ -39,31 +40,105 @@ def hello():
     return render_template('index.html', data=data)
 
 
-@app.route('/get_me', methods=['GET', 'POST'])
-def get_me1():
-    # 获取访问者的IP地址
-    ip_address = request.remote_addr
+@app.route('/add_info', methods=['GET', 'POST'])
+def add_info():
+    # ip_address = request.remote_addr
+    bro_list = pd.read_excel('./bro_list.xlsx')
 
-    # 获取今天的日期
-    today = datetime.date.today()
+    for bro in range(len(bro_list)):
+        print(bro_list['tags'][bro])
+        try:
+            tags = bro_list['tags'][bro].replace('"', '')
+        except AttributeError:
+            tags = None
+        dbu.add_browser(bro_list["acc_id"][bro], bro_list['id'][bro], bro_list['group'][bro],
+                        tags, bro_list['ip'][bro], bro_list['countrycode'][bro])
 
-    # 更新数据库中的访问记录
-    record = AccessRecord.query.filter_by(ip_address=ip_address, access_date=today).first()
-    if record:
-        record.count += 1
+    return {'msg': '添加成功', 'status_code': 'success'}
+
+
+@app.route('/update_table', methods=['GET', 'POST'])
+def update_table():
+    db.create_all()
+    return {'msg': '更新成功', 'statu_code': 'success'}
+
+
+@app.route('/execution_method', methods=['GET', 'POST'])
+def execution_method():
+    model_list_face_run = ['get_group_info', 'get_group_userId', 'listen_group_comment']
+
+    def long_running_task(_browser_list):
+        with app.app_context():
+            # # 模拟一个耗时的函数
+            import time
+            for browser in _browser_list:
+                dbu.update_browser_status(browser, random.randint(1, 2))
+                time.sleep(random.randint(3, 5))
+        logger.info("耗时函数执行完成")
+
+    def open_browser_task(_browser_list):
+        with app.app_context():
+            for browser in _browser_list:
+                open_b.open_browser(browser)
+
+    def listen_fb_comment(_browser_list, _maxProcesses):
+        with app.app_context():
+            # write_list=
+            current_function = inspect.stack()[1].function
+            with open(f'txt_path/{current_function}_browser_id.txt', 'w') as f:
+                f.write('\n'.join(_browser_list))
+            listen_face.run(2, current_function, _maxProcesses, 0)
+
+    data = request.get_json()['data']
+    logger.info(data)
+    if 'send_func_value' not in data or data['send_func_value'] == '':
+        return {'msg': '请选择操作方法', 'statu_code': 'warning'}
+    method = data['send_func_value']
+    browser_list = data['sendBroList']
+    maxProcesses = int(data['send_maxProcesses'])
+    if len(browser_list) == 1 and browser_list[0] == '':
+        return {'msg': '请选择浏览器', 'statu_code': 'warning'}
+
+    logger.info(method)
+    logger.info(browser_list)
+    if method == 'test1':
+        threading.Thread(target=long_running_task, args=(browser_list,)).start()
+        msg = '随机修改状态任务已提交'
+    elif method == 'open_browser':
+        threading.Thread(target=open_browser_task, args=(browser_list,)).start()
+        msg = '打开浏览器'
+    elif method == 'tk_brushVideo':
+        threading.Thread(target=open_browser_task, args=(browser_list,)).start()
+        msg = 'Tiktok养号'
+    elif method == 'tk_uploadVideo':
+        threading.Thread(target=open_browser_task, args=(browser_list,)).start()
+        msg = 'Tiktok上传视频'
+    elif method == 'tk_comment':
+        threading.Thread(target=open_browser_task, args=(browser_list,)).start()
+        msg = 'Tiktok评论'
+    elif method == 'fb_brushPost':
+        threading.Thread(target=open_browser_task, args=(browser_list,)).start()
+        msg = 'Facebook养号'
+    elif method == 'listen_fb_comment':
+        threading.Thread(target=listen_fb_comment, args=(browser_list,maxProcesses)).start()
+        msg = 'Facebook监控小组评论'
+    elif method == 'get_fb_newMember':
+        threading.Thread(target=open_browser_task, args=(browser_list, maxProcesses,)).start()
+        msg = 'Fb获取小组新人'
+    elif method == 'get_fb_groupInfo':
+        threading.Thread(target=open_browser_task, args=(browser_list,)).start()
+        msg = 'Fb获取小组信息'
     else:
-        new_record = AccessRecord(ip_address=ip_address, access_date=today, count=1)
-        db.session.add(new_record)
-    db.session.commit()
-    total_access_count = AccessRecord.query.with_entities(db.func.sum(AccessRecord.count)).scalar() + 1931
+        return {'msg': 'error', 'statu_code': 'error'}
 
-    with open(f'user_id_txt/split_{total_access_count + 1}.txt', 'r', encoding='utf8') as f:
-        data = [line.strip() for line in f.readlines()]
-    total_access_count += 1
-    data.append('http://192.168.31.16:12475/')
-    logger.info(f'{data}')
+    return {'msg': f'{msg}任务已提交', 'statu_code': 'success'}
 
-    return {'list': data}
+
+@app.route('/delete_tags', methods=['GET', 'POST'])
+def delete_tags():
+    request_id = request.args.get('id')
+    print(request_id)
+    return {'msg': '删除成功', 'status_code': 'success'}
 
 
 def get_dates():
