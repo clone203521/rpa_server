@@ -64,8 +64,10 @@ class Run:
 
         driver = webdriver.Chrome(service=service, options=chrome_option)
         # driver.maximize_window()
-        driver.close()
         page = from_selenium(driver)
+        close_tab = page.get_tab(url='https://start.adspower.net/')
+        if close_tab:
+            close_tab.close()
         page.set.window.max()
         page.set.window.mini()
 
@@ -141,11 +143,17 @@ def operate_tiktok(browser_id_op, model, temp_index, add_index, op_platformType)
     # page.wait(15, 20)
     platformType1 = 'tiktok'
 
+    send_data = {
+        'run_browser_list': [browser_id_op]
+    }
     if flag:
+        send_data['tag'] = 'success'
         saveCompleteId(browser_id_op, op_platformType)
         logger.info(f'{browser_id_op}已完成操作')
     else:
+        send_data['tag'] = 'error'
         logger.error(f'{browser_id_op}有异常情况，发生中断')
+    requests.post(url=f'http://fbmessage.v7.idcfengye.com/changeTag', json=send_data)
     page.quit()
 
 
@@ -226,6 +234,11 @@ def run(op_i, platformType_run, maxProcesses):
             current_browser_id_list = random.sample(browser_id_set, maxProcesses)
         except ValueError:
             current_browser_id_list = list(browser_id_set)
+        send_data = {
+            'run_browser_list': current_browser_id_list,
+            'tag': 'running'
+        }
+        requests.post(url=f'http://fbmessage.v7.idcfengye.com/changeTag', json=send_data)
         start_many_process(current_browser_id_list, model_list[operate_index_run], cycle_count, complete_browser_length,
                            platformType_run)
         cycle_count += 1
@@ -252,22 +265,18 @@ def run_loop(start_index, loop_platformType, reset_video=False):
             if reset_video and i == 0:
                 logger.info('重置视频文件')
                 my_utils.move_video_txt(loop_platformType)
-                break
             run(1, loop_platformType, 8)
-        elif 3 <= i < 4:
+        elif 2 <= i < 4:
             run(3, loop_platformType, 16)
         else:
             run(2, loop_platformType, 12)
             with open(f'./txt_path/{loop_platformType}_complete_id.txt', 'w', encoding='utf8') as f:
                 f.write('')
         time.sleep(random.uniform(3, 7) * 40)
-        if i == 2:
-            with open(f'./txt_path/{loop_platformType}_complete_id.txt', 'w', encoding='utf8') as f:
-                f.write('')
-        if i == 4:
-            with open(f'./txt_path/{loop_platformType}_complete_id.txt', 'w', encoding='utf8') as f:
-                f.write('')
         i += 1
+        if i % 2 == 0:
+            with open(f'./txt_path/{loop_platformType}_complete_id.txt', 'w', encoding='utf8') as f:
+                f.write('')
 
 
 if __name__ == "__main__":
@@ -275,8 +284,8 @@ if __name__ == "__main__":
     model_list = ['modify_personal_data', 'upload_video', 'brushVideo', 'commentAreaAt']
     # 选择浏览器id文件
     platformType = 'tik_all'
-    op_index = 0
+    start_index = 2
     # run(0, platformType_run=platformType, maxProcesses=12)
 
     # 0 -> 发视频，评论，刷视频; 2 -> 评论，刷视频; 4 -> 刷视频
-    run_loop(0, loop_platformType=platformType,reset_video=True)
+    run_loop(start_index, loop_platformType=platformType, reset_video=True)

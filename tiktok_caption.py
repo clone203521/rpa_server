@@ -234,7 +234,7 @@ def brushVideo(page_brush: Union[ChromiumPage, ChromiumTab], brush_user_id):
 
     func_start_time = time.time()
     # 每个帐号刷视频的时间
-    cycle_time = random.uniform(30, 40) * 60
+    cycle_time = random.uniform(60, 70) * 60
     # cycle_time = 600
 
     like_count = 1
@@ -396,7 +396,7 @@ def commentAreaAt_low(page_comment: Union[ChromiumPage, ChromiumTab], comment_us
     # 每次评论@多少人
     once_comment_people = 5
     # 一共评论多少次
-    comment_number = random.randint(2, 2)
+    comment_number = random.randint(5, 5)
     # return
     for once_comment in [lines[i:i + once_comment_people] for i in range(0, len(lines), once_comment_people)][
                         :comment_number]:

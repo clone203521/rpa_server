@@ -7,9 +7,11 @@ from DrissionPage._pages.chromium_tab import ChromiumTab
 
 import facebook_caption
 import listener_All
+from utils.decorator import monitor_function
 
 
-def get_group_info(page_get_groupId, getGroup_userId, keyword):
+@monitor_function
+def get_group_info(page_get_groupId, getGroup_userId, keyword, valid_event: threading.Event):
     functions = [facebook_caption.collecting_groupId, listener_All.listen_group_info]
     threads = []
     # 导入线程函数后创建一个事件对象
@@ -25,10 +27,13 @@ def get_group_info(page_get_groupId, getGroup_userId, keyword):
     for thread in threads:
         thread.join()
 
+    valid_event.set()
+
     return True
 
 
-def get_group_userId(page_get_groupUserId, getGroupUser_userId, group_id):
+@monitor_function
+def get_group_userId(page_get_groupUserId, getGroupUser_userId, group_id, valid_event: threading.Event):
     functions = [facebook_caption.collecting_group_userId, listener_All.listen_group_member]
     threads = []
 
@@ -43,18 +48,21 @@ def get_group_userId(page_get_groupUserId, getGroupUser_userId, group_id):
         threads.append(thread)
 
     # 使用 threading.Timer 定时器设置超时
-    timer = threading.Timer(120, stop_event.set)
+    timer = threading.Timer(60 * 30, stop_event.set)
     timer.start()
 
     # 等待所有线程完成
     for thread in threads:
         thread.join()
 
+    valid_event.set()
+
     return True
 
 
+@monitor_function
 def monitoring_Team_Comments(page_get_groupUserId: Union[ChromiumPage, ChromiumTab], getGroupUser_userId,
-                             group_url: str):
+                             group_url: str, valid_event: threading.Event):
     # page_get_groupUserId.get(group_url)
     functions = [facebook_caption.scroll_group_comment, listener_All.listen_group_comment]
     threads = []
@@ -69,7 +77,7 @@ def monitoring_Team_Comments(page_get_groupUserId: Union[ChromiumPage, ChromiumT
         threads.append(thread)
 
     hour = 1
-    listener_time = 60 * 60 * hour
+    listener_time = 60 * 30 * hour
     # 使用 threading.Timer 定时器设置超时
     timer = threading.Timer(listener_time, stop_event.set)
     timer.start()
@@ -77,6 +85,8 @@ def monitoring_Team_Comments(page_get_groupUserId: Union[ChromiumPage, ChromiumT
     # 等待所有线程完成
     for thread in threads:
         thread.join()
+
+    valid_event.set()
 
     return True
 

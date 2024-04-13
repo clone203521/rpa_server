@@ -359,11 +359,15 @@ def move_video_txt(txt_name):
         id_list = f.readlines()
 
     count = 1
+    video_list = os.listdir('./videos/')
     for b_id in id_list:
         os.makedirs(f'./browserDownload/{b_id.strip()}', exist_ok=True)
         if os.path.exists(f'./browserDownload/{b_id.strip()}/video_1.mp4'):
             continue
-        shutil.move(f'./videos/{count}.mp4', f'./browserDownload/{b_id.strip()}/video_1.mp4')
+        try:
+            shutil.move(f'./videos/{video_list[count - 1]}', f'./browserDownload/{b_id.strip()}/video_1.mp4')
+        except IndexError:
+            logger.error(f'视频消耗完毕，请进行补充')
         count += 1
 
 
@@ -519,7 +523,7 @@ def json_test11():
 
 
 temp_set = set()
-
+temp_user = set()
 
 def chouqu_test(data=None):
     if data is None:
@@ -541,10 +545,11 @@ def chouqu_test(data=None):
         if _temp_data not in temp_set:
             logger.info(f'评论: {text}')
         temp_set.add(_temp_data)
-        if current_time - create_time < 60 * 8:
-            logger.info(f'这是一条8分钟内的评论数据: {text}')
+        if current_time - create_time < 60 * 60 * 2:
+            logger.info(f'这是一条2小时内的评论数据: {text}')
         for keyword in keyword_set:
-            if keyword in text.lower() and (current_time - create_time < 60 * 8):
+            if keyword in text.lower() and (current_time - create_time < 60 * 60 * 2) and user_id not in temp_user:
+                temp_user.add(user_id)
                 result_list.append(user_id)
                 logger.info(f'{text}---{user_id}---{datetime.datetime.fromtimestamp(create_time):%Y-%m-%d %H:%M:%S}')
                 break

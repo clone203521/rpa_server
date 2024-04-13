@@ -1,14 +1,10 @@
 import json
-import math
 import os
-import re
-import time
 
 import pandas as pd
 from loguru import logger
 from tqdm import tqdm
 
-import my_utils
 from utils.decorator import timer
 
 
@@ -86,6 +82,8 @@ def extraction_userIdInfo(user_id):
         'message_url': set(),
     }
     for folder_name in tqdm(os.listdir(f'{root_path}')):
+        if not folder_name.endswith('4-13'):
+            continue
         for file_name in os.listdir(f'{root_path}/{folder_name}'):
             # logger.info(f'{root_path}/{folder_name}/{file_name}')
             if file_name.endswith('.json'):
@@ -153,10 +151,19 @@ def concat_csv(csv_path, output_file):
     df.to_csv(output_file, index=False)
 
 
+def concat_csv11():
+    data = pd.read_csv('../facebook_group/group_memberId/00userId_csv/user_info_current-123.csv', encoding='utf8')
+
+    data.drop_duplicates(keep='first', inplace=True, subset=['user_id'])
+    print(len(data))
+
+    data.to_csv('aaa.csv', index=False)
+
+
 if __name__ == '__main__':
+    # concat_csv11()
     # extraction_userIdInfo_from_userFans(2)
-    extraction_userIdInfo('123456')
+    # extraction_userIdInfo('123')
     csv_path = '../facebook_group/group_memberId/00userId_csv'
     concat_csv(csv_path, 'output.csv')
     # extraction_groupInfo()
-

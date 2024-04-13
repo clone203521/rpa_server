@@ -1,11 +1,13 @@
 import json
 import os
 import threading
+import time
 from datetime import datetime
 from typing import Union
 
 from DrissionPage._pages.chromium_page import ChromiumPage
 from DrissionPage._pages.chromium_tab import ChromiumTab
+from DrissionPage._units.actions import Actions
 from loguru import logger
 
 from utils import my_utils
@@ -52,7 +54,7 @@ def listen_group_member(page_add_friInGp: Union[ChromiumPage, ChromiumTab], user
     logger.info(f'{user_id_add_FriInGp}监听开始')
     count = 1
     page_add_friInGp.wait(3)
-    for packet in page_add_friInGp.listen.steps(timeout=30):
+    for packet in page_add_friInGp.listen.steps(timeout=60):
         if stop_event.is_set():
             break
         logger.info(f'{user_id_add_FriInGp}============={count}')
@@ -64,12 +66,12 @@ def listen_group_member(page_add_friInGp: Union[ChromiumPage, ChromiumTab], user
             logger.info(f'{user_id_add_FriInGp}监听到第{count}个数据包')
             count += 1
             my_utils.save_userId_toTxt(packet.response.body, listen_group_id, user_id_add_FriInGp)
-            if count == 20:
-                stop_event.set()
-                break
-    if not stop_event.is_set():
-        stop_event.set()
-        logger.info(f'{user_id_add_FriInGp}监听结束')
+            # if count == 100:
+            #     stop_event.set()
+            #     break
+    stop_event.set()
+    time.sleep(120)
+    logger.info(f'{user_id_add_FriInGp}监听结束')
     return True
 
 
@@ -96,7 +98,8 @@ def listen_group_info(page_listen_gpInfo: Union[ChromiumPage, ChromiumTab], user
             if count == 9:
                 stop_event.set()
                 break
-
+    time.sleep(120)
+    stop_event.set()
     return True
 
 
@@ -133,7 +136,7 @@ def listen_group_comment(page_listen_comment: Union[ChromiumPage, ChromiumTab], 
     logger.info(f'{user_id_comment}监听开始')
     count = 1
 
-    for packet in page_listen_comment.listen.steps(timeout=60 * 4):
+    for packet in page_listen_comment.listen.steps(timeout=60):
         try:
             user_list = my_utils.extract_comment(packet.response.body)
         except Exception as e:
@@ -150,6 +153,7 @@ def listen_group_comment(page_listen_comment: Union[ChromiumPage, ChromiumTab], 
             else:
                 logger.error(f'{user_id_comment}评论发送失败')
             new_tab.close()
+    time.sleep(120)
     stop_event.set()
     return True
 
@@ -165,6 +169,22 @@ def send_message(page_send_message: Union[ChromiumPage, ChromiumTab], user_id_me
         logger.error(e)
         return False
     return True
+
+
+def listen_facebook_auto(page_listen_comment: Union[ChromiumPage, ChromiumTab], user_id_comment, group_url,
+                         stop_event: threading.Event):
+    while not stop_event.is_set():
+        if page_listen_comment.url.find('check') != -1:
+            ac = Actions(page_listen_comment)
+            close_box = page_listen_comment.ele('aria-label=关闭', timeout=5)
+            if close_box:
+                ac.move_to(close_box).click()
+                for _ in range(10):
+                    if page_listen_comment.url.find('check') == -1:
+                        break
+                    ac.click()
+                    page_listen_comment.wait(1, 2)
+        page_listen_comment.wait(5, 10)
 
 
 if __name__ == '__main__':

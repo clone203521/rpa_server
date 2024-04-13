@@ -64,8 +64,10 @@ class Run:
 
         driver = webdriver.Chrome(service=service, options=chrome_option)
         # driver.maximize_window()
-        driver.close()
         page = from_selenium(driver)
+        close_tab = page.get_tab(url='https://start.adspower.net/')
+        if close_tab:
+            close_tab.close()
         page.set.window.max()
         page.set.window.mini()
 

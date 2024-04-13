@@ -473,9 +473,12 @@ def collecting_group_userId(page_getUserId: Union[ChromiumPage, ChromiumTab], co
         page_getUserId.wait(3)
         logger.info(f'{coll_groupUser_user_id}滚动第{count}次')
         count += 1
-        if count == 120:
-            stop_event.set()
-            break
+        # if count == 180:
+        #     stop_event.set()
+        #     break
+    if stop_event.is_set():
+        logger.warning(f'{coll_groupUser_user_id}提前结束')
+        time.sleep(600)
     stop_event.set()
     logger.info(f'{coll_groupUser_user_id}获取小组成员id完成')
     pass
@@ -500,7 +503,8 @@ def scroll_group_comment(page_comment: Union[ChromiumPage, ChromiumTab], comment
             temp_time = time.time()
             current_tab.refresh()
             current_tab.wait(20)
-
+    time.sleep(300)
+# check
 
 def fa2_test():
     def get_faTwo_code(fa_2):

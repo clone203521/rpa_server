@@ -5,6 +5,7 @@ import msvcrt
 import multiprocessing
 import os
 import random
+import threading
 import time
 
 import pandas as pd
@@ -28,7 +29,8 @@ current_data = datetime.datetime.now().strftime("%Y-%m-%d")
 os.makedirs(f'{LOG_PATH}/{current_data}', exist_ok=True)
 logger.add(f'{LOG_PATH}/{current_data}/{formatted_time}.log', format="{time} {level} {message}", level="INFO")
 
-group_list = pd.read_csv('facebook_group/group_info/00group_csv/group_info_final.csv', encoding='utf8')
+# group_list = pd.read_csv('facebook_group/group_info/00group_csv/group_info.csv', encoding='utf8')
+group_list = pd.read_excel('facebook_group/group_info/00group_csv/new_group.xlsx')
 
 
 class Run:
@@ -64,8 +66,10 @@ class Run:
 
         driver = webdriver.Chrome(service=service, options=chrome_option)
         # driver.maximize_window()
-        driver.close()
         page = from_selenium(driver)
+        close_tab = page.get_tab(url='https://start.adspower.net/')
+        if close_tab:
+            close_tab.close()
         page.set.window.max()
         page.wait(0.5)
         page.set.window.mini()
@@ -109,6 +113,7 @@ def operate_facebook_listener(browser_id_op, model, temp_index, add_index, op_pl
     if selenium_webdriver is None:
         logger.error(f'{browser_id_op}连接失败，请检查adspower是否打开')
         return False
+
     page = r.start_selenium(selenium_webdriver, selenium_address, user_id)
     logger.info(f'{browser_id_op}   {model}')
     temp_index += add_index
@@ -116,7 +121,6 @@ def operate_facebook_listener(browser_id_op, model, temp_index, add_index, op_pl
     #
     logger.info(f'当前是第{temp_index}台浏览器')
 
-    # logger.info(page.url)
     flag = False
     if len(page.url) > len('https://www.facebook.com/'):
         page.get('https://www.facebook.com/')
@@ -128,6 +132,7 @@ def operate_facebook_listener(browser_id_op, model, temp_index, add_index, op_pl
     page.wait(1, 3)
     ac.click()
     page.wait(1, 3)
+    valid_event = valid_event = threading.Event()
     if model == 'get_group_info':
         group_keyword = ['Louis Vuitton', 'Gucci', 'Chanel', 'Prada', 'Hermès', 'Dior', 'Burberry', 'Fendi',
                          'Saint Laurent', 'Balenciaga', 'Givenchy', 'Bottega Veneta', 'Valentino', 'Celine',
@@ -135,28 +140,42 @@ def operate_facebook_listener(browser_id_op, model, temp_index, add_index, op_pl
         if temp_index - 1 > len(group_keyword):
             flag = False
         else:
-            flag = listen_caption_facebook.get_group_info(page, browser_id_op, group_keyword[temp_index - 1])
+            flag = listen_caption_facebook.get_group_info(getGroup_userId=browser_id_op,
+                                                          keyword=group_keyword[temp_index - 1],
+                                                          valid_event=valid_event, page_get_groupId=page)
     elif model == 'get_group_userId':
+        temp_add = 30
         group_add = op_length
-        if group_add + temp_index - 1 > len(group_list['group_url']):
+        if group_add + temp_index - 1 + temp_add > len(group_list['group_url']):
             logger.error(f'小组url已用完')
             flag = False
         else:
-            flag = listen_caption_facebook.get_group_userId(page, browser_id_op,
-                                                            group_list['group_url'][temp_index - 1 + group_add])
+            flag = listen_caption_facebook.get_group_userId(page_get_groupUserId=page,
+                                                            getGroupUser_userId=browser_id_op,
+                                                            group_id=group_list['group_url'][
+                                                                temp_index - 1 + group_add + temp_add],
+                                                            valid_event=valid_event)
     elif model == 'listen_group_comment':
         group_add = op_length
         if group_add + temp_index - 1 > len(group_list['group_url']):
             logger.error(f'小组url已用完')
             flag = False
         else:
-            flag = listen_caption_facebook.monitoring_Team_Comments(page, browser_id_op,
-                                                                    group_list['group_url'][temp_index - 1 + group_add])
+            flag = listen_caption_facebook.monitoring_Team_Comments(getGroupUser_userId=browser_id_op,
+                                                                    group_url=group_list['group_url'][
+                                                                        temp_index - 1 + group_add],
+                                                                    page_get_groupUserId=page, valid_event=valid_event)
+    send_data = {
+        'run_browser_list': [browser_id_op]
+    }
     if flag:
+        send_data['tag'] = 'success'
         saveCompleteId(browser_id_op, op_platformType)
         logger.info(f'{browser_id_op}已完成操作')
     else:
+        send_data['tag'] = 'error'
         logger.error(f'{browser_id_op}有异常情况，发生中断')
+    requests.post(url=f'http://fbmessage.v7.idcfengye.com/changeTag', json=send_data)
     page.quit()
 
 
@@ -206,8 +225,9 @@ def exportIncompleteBrowserNumber():
     no_complete_browser_list = [tran_json[b_id] for b_id in complete_browser_id_set]
     print(no_complete_browser_list)
 
+
 @reset_file
-def run(op_i: int, platformType_run: str, maxProcesses: int, run_length: int):
+def run(op_i: int, platformType_run: str, maxProcesses: int, run_length: int = 0):
     model_list_run = ['get_group_info', 'get_group_userId', 'listen_group_comment']
     operate_index_run = op_i
 
@@ -235,6 +255,11 @@ def run(op_i: int, platformType_run: str, maxProcesses: int, run_length: int):
             current_browser_id_list = random.sample(browser_id_set, maxProcesses)
         except ValueError:
             current_browser_id_list = list(browser_id_set)
+        send_data = {
+            'run_browser_list': current_browser_id_list,
+            'tag': 'running'
+        }
+        requests.post(url=f'http://fbmessage.v7.idcfengye.com/changeTag', json=send_data)
         start_many_process(current_browser_id_list, model_list_run[operate_index_run], cycle_count,
                            complete_browser_length, platformType_run, run_length)
         cycle_count += 1
@@ -269,8 +294,8 @@ def listen_loop(platformType, temp_add=0, maxProcesses=10):
 if __name__ == "__main__":
     model_list_run = ['get_group_info', 'get_group_userId', 'listen_group_comment']
     # 选择浏览器id文件
-    platformType = 'facebook_account'
+    platformType = 'facebook_4_10'
 
-    run(2, platformType_run=platformType, maxProcesses=10, run_length=0)
+    run(2, platformType_run=platformType, maxProcesses=4, run_length=0)
 
     # listen_loop(platformType=platformType)
