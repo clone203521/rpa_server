@@ -55,6 +55,26 @@ class Operation(db.Model):
     is_delete = db.Column(db.Integer, default=0, nullable=False, comment='是否弃用 1删除，0正常')
 
 
+class FbAccount(db.Model):
+    def save(self):
+        try:
+            db.session.add(self)
+            db.session.commit()
+        except Exception as e:
+            print(e)
+            db.session.rollback()
+            return '失败'
+        return '成功'
+
+    __tablename__ = 'fb_account'
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True, comment='id')
+    fb_id = db.Column(db.String(50), nullable=False, unique=True, comment='Fb账号id')
+    email = db.Column(db.String(50), nullable=False, comment='邮箱')
+    password = db.Column(db.String(50), nullable=False, comment='密码')
+    fa_2 = db.Column(db.String(50), nullable=False, comment='2FA验证码')
+    create_time = db.Column(db.DateTime, nullable=False, default=datetime.now, comment='添加时间')
+
+
 if __name__ == '__main__':
     data = [
         {'label': '打开选中浏览器', 'value': 'open_browser', 'type': '其他操作'},

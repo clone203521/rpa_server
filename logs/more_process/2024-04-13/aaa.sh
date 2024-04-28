@@ -1,0 +1,1 @@
+cat *.log > 00hebing.log

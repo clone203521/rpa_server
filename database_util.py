@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from models import db, AdsBrowser, BrowserTag, Operation
+from models import db, AdsBrowser, BrowserTag, Operation, FbAccount
 
 dbs = db.session
 
@@ -84,6 +84,20 @@ def edit_browser_tag(browser_name: str, tag: str):
         browser.tags = tag
         dbs.commit()
     return True
+
+
+def add_fbAccount(acc_id: str, acc_email: str, acc_password: str, acc_fa2: str):
+    temp_acc = FbAccount(fb_id=acc_id, email=acc_email, fa_2=acc_fa2, password=acc_password)
+    dbs.add(temp_acc)
+    dbs.commit()
+    return True
+
+
+def select_fbAccountPwd(acc_id: str):
+    acc = dbs.query(FbAccount).filter(FbAccount.fb_id == acc_id).first()
+    if acc is not None:
+        return acc.password
+    return False
 
 
 if __name__ == '__main__':

@@ -36,7 +36,7 @@
 #     return base64_str
 #
 #
-# def rotate_image_f(page, outer):
+# def rotate_image_f(page_count, outer):
 #
 #
 #

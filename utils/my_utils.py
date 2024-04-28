@@ -1,6 +1,7 @@
 import base64
 import datetime
 import json
+import math
 import msvcrt
 import os
 import random
@@ -264,7 +265,7 @@ def folder_reset():
             f.write(i + '\n')
 
     id_json = {}
-    for bro_id, index in zip(temp_dataframe['id'][::-1], temp_dataframe['acc_id'][::-1]):
+    for bro_id, index in zip(temp_dataframe['id'][::-1], temp_dataframe['acc_id_g'][::-1]):
         id_json.update({bro_id: index})
     #
     # with open('browser_id.json', 'w') as f:
@@ -443,6 +444,18 @@ def save_userFans_toJson(temp_dict: dict, user_name, user_id_fans):
         json.dump(temp_dict, f, ensure_ascii=False, indent=4)
 
 
+def save_selfCommentToJson(temp_dict: dict):
+    current_time = datetime.datetime.now().strftime('%Y-%m-%d')
+    detail_time = datetime.datetime.now().strftime('%Y-%m-%d---%H_%M_%S_%f')
+    save_path = f'tiktok_comment/comment_{current_time}'
+    os.makedirs(save_path, exist_ok=True)
+    if time.time() - float(temp_dict[-1]['create_time']) > 60 * 60 * 24 * 2:
+        return True
+    with open(f'{save_path}/comment---{detail_time}.json', 'w', encoding='utf8') as f:
+        json.dump(temp_dict, f, ensure_ascii=False, indent=4)
+    return False
+
+
 def gen_csv():
     x = ["https://www.tiktok.com/@nvnciv",
          "https://www.tiktok.com/@ponhuluxuries",
@@ -525,6 +538,7 @@ def json_test11():
 temp_set = set()
 temp_user = set()
 
+
 def chouqu_test(data=None):
     if data is None:
         with open('a13.json', 'r', encoding='utf8') as f:
@@ -532,6 +546,8 @@ def chouqu_test(data=None):
     result_list = []
     with open('utils/face_keyword.txt', 'r', encoding='utf8') as f:
         keyword_set = set(f.read().split('\n'))
+    with open('utils/face_stopword.txt', 'r', encoding='utf8') as f:
+        stopword_set = set(f.read().split('\n'))
     current_time = time.time()
     for value in data:
         try:
@@ -545,18 +561,34 @@ def chouqu_test(data=None):
         if _temp_data not in temp_set:
             logger.info(f'评论: {text}')
         temp_set.add(_temp_data)
-        if current_time - create_time < 60 * 60 * 2:
-            logger.info(f'这是一条2小时内的评论数据: {text}')
+        next_flag = False
+        for keyword in stopword_set:
+            if keyword in text.lower():
+                next_flag = True
+                break
+        if next_flag:
+            continue
+        time_difference = current_time - create_time
+        if time_difference < 60 * 60 * 8:
+            if time_difference / 3600 < 1:
+                logger.info(f'这是一条{math.ceil(time_difference % 60)}分钟内的评论数据: {text}')
+            else:
+                logger.info(f'这是一条{math.floor(time_difference / 3600)}小时内的评论数据: {text}')
+        add_flag = False
+
+        right_flag = (time_difference < 60 * 60 * 8) and user_id not in temp_user
         for keyword in keyword_set:
-            if keyword in text.lower() and (current_time - create_time < 60 * 60 * 2) and user_id not in temp_user:
+            if keyword in text.lower() and right_flag:
                 temp_user.add(user_id)
+                add_flag = True
                 result_list.append(user_id)
                 logger.info(f'{text}---{user_id}---{datetime.datetime.fromtimestamp(create_time):%Y-%m-%d %H:%M:%S}')
                 break
-        # if (text.lower() in keyword_set) and (current_time - create_time < 60 * 10):
-        #     result_list.append(user_id)
-        #     logger.info(f'{text}---{user_id}---{datetime.datetime.fromtimestamp(create_time):%Y-%m-%d %H:%M:%S}')
-        # print(time.time() - create_time)
+        if not add_flag and random.random() < 0.6 and right_flag:
+            temp_user.add(user_id)
+            result_list.append(user_id)
+            logger.info(f'{text}---{user_id}---{datetime.datetime.fromtimestamp(create_time):%Y-%m-%d %H:%M:%S}')
+
     return result_list
 
 
@@ -568,8 +600,51 @@ def excel_open_toCsv():
     _temp_excel.to_csv('fb_account2.csv', index=False)
 
 
+def tran_txt():
+    with open('4.13fb账号蔡磊.txt', 'r', encoding='utf8') as f:
+        data = f.read().split('\n')
+    temp_json = {
+        'fb_id': [],
+        'password': [],
+        '2fa': [],
+        'email': []
+    }
+    for i in data:
+        temp_json['fb_id'].append(i.split('id=')[1].split('&am')[0])
+        temp_json['password'].append(i.split('密码')[1].split('先账号')[0])
+        temp_json['email'].append(i.split('账号')[1].split('密码')[0])
+        temp_json['2fa'].append(i.split('com/code/')[1].split('预览')[0])
+
+    df = pd.DataFrame(temp_json)
+    df.to_csv('fb_acc2.csv', index=False)
+
+
+def save_ins_user(ins_user_list, user_id_save_insUser, insUser_keyword):
+    detail_time = datetime.datetime.now().strftime('%Y-%m-%d---%H_%M_%S_%f')
+    current_time = datetime.datetime.now().strftime('%Y-%m-%d')
+    save_path = f'ins_data/user_data/{current_time}'
+    os.makedirs(save_path, exist_ok=True)
+    with open(f'{save_path}/{user_id_save_insUser}---{insUser_keyword}---{detail_time}.json', 'w',
+              encoding='utf8') as f:
+        json.dump(ins_user_list, f, ensure_ascii=False, indent=4)
+
+
+def save_ins_fans(temp_dict: str, user_id_save_insFans: str, user_name_fans):
+    detail_time = datetime.datetime.now().strftime('%Y-%m-%d---%H_%M_%S_%f')
+    current_time = datetime.datetime.now().strftime('%Y-%m-%d')
+    save_path = f'ins_data/user_fans/{current_time}'
+    os.makedirs(save_path, exist_ok=True)
+    with open(f'{save_path}/{user_name_fans}---{user_id_save_insFans}---{detail_time}.json', 'w',
+              encoding='utf8') as f:
+        json.dump(json.loads(temp_dict), f, ensure_ascii=False, indent=4)
+
+
 if __name__ == '__main__':
-    excel_open_toCsv()
+    pass
+    # excel_open_toCsv()
+    # tran_txt()
+    # print((time.time() - 1713205041) / 3600)
+
     # print(time.time())
     # if 2 == 2 and 3 == 3:
     #     print(125)

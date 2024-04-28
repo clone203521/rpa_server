@@ -9,14 +9,13 @@ import time
 
 import pandas as pd
 import requests
-from DrissionPage._units.actions import Actions
 from DrissionPage.common import from_selenium
 from loguru import logger
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 
-from listener import listen_caption_facebook
+from listener import listen_caption_ins as listen_ins
 from utils.decorator import reset_file
 
 ROOT_PATH = 'browserDownload'
@@ -28,7 +27,8 @@ current_data = datetime.datetime.now().strftime("%Y-%m-%d")
 os.makedirs(f'{LOG_PATH}/{current_data}', exist_ok=True)
 logger.add(f'{LOG_PATH}/{current_data}/{formatted_time}.log', format="{time} {level} {message}", level="INFO")
 
-group_list = pd.read_csv('facebook_group/group_info/00group_csv/group_info_final.csv', encoding='utf8')
+df_test = pd.read_csv('ins_data/user_data_csv/2024-04-26.csv', encoding='utf8')
+user_fans_list = df_test['user'].tolist()
 
 
 class Run:
@@ -38,7 +38,7 @@ class Run:
             'Content-Type': 'application/json',
             'Accept': 'application/json'
         }
-        self.finger_url = 'http://local.adspower.com:50325'
+        self.finger_url = 'http://127.0.0.1:50325'
 
     # 根据对应user_id打开对应窗口
     def start_userID(self, user_id):
@@ -96,7 +96,7 @@ def saveCurrentBrower(user_id_save):
 
 
 # 将user_id存入任务队列中
-def operate_facebook_listener(browser_id_op, model, temp_index, add_index, op_platformType, op_length):
+def operate_facebook_listener(browser_id_op, model, temp_index, add_index, op_platformType, user_start_index):
     selenium_webdriver, selenium_address, user_id = None, None, None
     for _ in range(3):
         try:
@@ -117,34 +117,16 @@ def operate_facebook_listener(browser_id_op, model, temp_index, add_index, op_pl
     #
     logger.info(f'当前是第{temp_index}台浏览器')
 
-    # logger.info(page.url)
+    # logger.info(page_count.url)
     flag = False
-    if len(page.url) > len('https://www.facebook.com/'):
-        page.get('https://www.facebook.com/')
+    if len(page.url) > len('https://www.instagram.com/'):
+        page.get('https://www.instagram.com/')
         page.wait(10, 20)
-    ac = Actions(page)
-    ac.move_to((400, 400)).click()
-    page.wait(1, 3)
-    ac.click()
-    page.wait(1, 3)
-    ac.click()
-    page.wait(1, 3)
-    if model == 'get_group_info':
-        group_keyword = ['Louis Vuitton', 'Gucci', 'Chanel', 'Prada', 'Hermès', 'Dior', 'Burberry', 'Fendi',
-                         'Saint Laurent', 'Balenciaga', 'Givenchy', 'Bottega Veneta', 'Valentino', 'Celine',
-                         'Alexander McQueen']
-        if temp_index - 1 > len(group_keyword):
-            flag = False
-        else:
-            flag = listen_caption_facebook.get_group_info(page, browser_id_op, group_keyword[temp_index - 1])
-    elif model == 'get_group_userId':
-        group_add = op_length
-        if group_add + temp_index - 1 > len(group_list['group_url']):
-            logger.error(f'小组url已用完')
-            flag = False
-        else:
-            flag = listen_caption_facebook.get_group_userId(page, browser_id_op,
-                                                            group_list['group_url'][temp_index - 1 + group_add])
+
+    if model == 'get_user_info':
+        pass
+    elif model == 'get_user_fans':
+        flag=listen_ins.get_user_fans(page, user_id, user_fans_list[user_start_index])
 
     if flag:
         saveCompleteId(browser_id_op, op_platformType)
@@ -154,15 +136,20 @@ def operate_facebook_listener(browser_id_op, model, temp_index, add_index, op_pl
     page.quit()
 
 
-def start_many_process(browsers, model, cycle_index, complete_browser_length, start_platformType, start_length):
+def start_many_process(browsers, model, cycle_index, complete_browser_length, start_platformType):
     # 启动多个进程来操作多个浏览器
     processes = []
-    count = 1
+    count = 0
+    with open('utils/keyword/ins_fans_start.txt', 'r') as f:
+        start_index = int(f.read())
+    if start_index + len(browsers) > len(user_fans_list):
+        start_index = 1
     for browsers_id in browsers:
-        temp = (cycle_index - 1) * len(browsers) + count
+        temp = (cycle_index - 1) * len(browsers) + count + 1
+        start_index = start_index + count - 1
         process = multiprocessing.Process(target=operate_facebook_listener,
-                                          args=(browsers_id, model, temp, complete_browser_length, start_platformType,
-                                                start_length))
+                                          args=(browsers_id, model, temp, complete_browser_length,
+                                                start_platformType, start_index,))
         processes.append(process)
         process.start()
         count += 1
@@ -171,6 +158,9 @@ def start_many_process(browsers, model, cycle_index, complete_browser_length, st
     # 等待所有进程完成
     for process in processes:
         process.join()
+
+    with open('utils/keyword/ins_fans_start.txt', 'w') as f:
+        f.write(f'{start_index}')
 
 
 def reset_complete_txt(del_platformType_run):
@@ -202,9 +192,8 @@ def exportIncompleteBrowserNumber():
 
 
 @reset_file
-def run(op_i, platformType_run, maxProcesses, run_length):
-    model_list_run = ['get_group_info', 'get_group_userId']
-    operate_index_run = op_i
+def run(op_i, platformType_run, maxProcesses):
+    model_list_run = ['get_user_info', 'get_user_fans']
 
     # 最大进程数
     # run_maxProcesses = 16
@@ -231,8 +220,8 @@ def run(op_i, platformType_run, maxProcesses, run_length):
             current_browser_id_list = random.sample(browser_id_set, maxProcesses)
         except ValueError:
             current_browser_id_list = list(browser_id_set)
-        start_many_process(current_browser_id_list, model_list_run[operate_index_run], cycle_count,
-                           complete_browser_length, platformType_run, run_length)
+        start_many_process(current_browser_id_list, model_list_run[op_i], cycle_count,
+                           complete_browser_length, platformType_run)
         cycle_count += 1
         for repeat_i in current_browser_id_list:
             browser_id_set.remove(repeat_i)
@@ -250,21 +239,11 @@ def run(op_i, platformType_run, maxProcesses, run_length):
 
 
 if __name__ == "__main__":
-    model_list = ['get_group_info', 'get_group_userId']
+    model_list = ['get_user_info', 'get_user_fans']
     # 选择浏览器id文件
-    platformType = 'facebook_account'
-    xx = input("是否重置文件 Y/N：")
-    if xx == 'Y' or xx == 'y':
-        with open(f'txt_path/{platformType}_complete_id.txt', 'w') as f:
-            f.write('')
-    # for operate_index in range(1):
-    #     run2(op_index_list[operate_index], loop_platformType)
-    with open(f'txt_path/{platformType}_browser_id.txt', 'r') as f:
-        browser_id_list = f.readlines()
-        bro_length = len(browser_id_list)
-    temp_add = 0
+    platformType = 'ins_all'
 
-    run(0, platformType, 10, 0)
+    run(0, platformType_run=platformType, maxProcesses=10)
 
     # while temp_add < len(group_list):
     #     run(1, loop_platformType, 29, temp_add)

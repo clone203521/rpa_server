@@ -9,7 +9,6 @@ import time
 
 import pandas as pd
 import requests
-from DrissionPage._units.actions import Actions
 from DrissionPage.common import from_selenium
 from loguru import logger
 from selenium import webdriver
@@ -38,7 +37,7 @@ class Run:
             'Content-Type': 'application/json',
             'Accept': 'application/json'
         }
-        self.finger_url = 'http://local.adspower.com:50325'
+        self.finger_url = 'http://127.0.0.1:50325'
 
     # 根据对应user_id打开对应窗口
     def start_userID(self, user_id):
@@ -63,11 +62,21 @@ class Run:
         chrome_option.add_experimental_option("debuggerAddress", selenium_address)  # 这行命令必须加上，才能启动指纹浏览器
 
         driver = webdriver.Chrome(service=service, options=chrome_option)
+
+        # # 获取所有窗口句柄
+        # window_handles = driver.window_handles
+        # # 切换到最后一个标签页
+        # # 遍历除最后一个句柄之外的所有句柄
+        # for handle in window_handles[:-1]:
+        #     # 关闭当前标签页
+        #     driver.switch_to.window(window_handles[-1])
+        #     driver.close()
+
         # driver.maximize_window()
         page = from_selenium(driver)
-        close_tab = page.get_tab(url='https://start.adspower.net/')
-        if close_tab:
-            close_tab.close()
+        while page.tabs_count != 1:
+            tab = page.get_tab(id_or_num=2)
+            tab.close()
         page.set.window.max()
         page.set.window.mini()
 
@@ -96,7 +105,7 @@ def saveCurrentBrower(user_id_save):
 
 
 # 将user_id存入任务队列中
-def operate_facebook_listener(browser_id_op, model, temp_index, add_index, op_platformType, op_length):
+def operate_facebook_listener(browser_id_op, model, temp_index, add_index, op_platformType):
     selenium_webdriver, selenium_address, user_id = None, None, None
     for _ in range(3):
         try:
@@ -117,7 +126,7 @@ def operate_facebook_listener(browser_id_op, model, temp_index, add_index, op_pl
     #
     logger.info(f'当前是第{temp_index}台浏览器')
 
-    # logger.info(page.url)
+    # logger.info(page_count.url)
     flag = False
     if model == 'get_group_info':
         group_keyword = ['Louis Vuitton', 'Gucci', 'Chanel', 'Prada', 'Hermès', 'Dior', 'Burberry', 'Fendi',
@@ -128,23 +137,32 @@ def operate_facebook_listener(browser_id_op, model, temp_index, add_index, op_pl
         else:
             flag = listen_caption_facebook.get_group_info(page, browser_id_op, group_keyword[temp_index - 1])
     elif model == 'get_user_fans':
-        group_add = op_length
-        if group_add + temp_index - 1 > len(userId_list):
-            logger.error(f'用户url已用完，请补充')
-            flag = False
-        else:
-            flag = listen_caption_tiktok.get_userFans(page, browser_id_op,
-                                                      userId_list['user_url'][temp_index - 1 + group_add])
+        user_url = ["influencedqueens", "babyfacevon0", "isabxlla.x",
+                    "danielleathena", "sugarartistkoko", "gayleboggs", "kayleeelauren"]
+        flag = listen_caption_tiktok.get_userFans(page, browser_id_op, user_url[temp_index - 1])
 
+    # if flag:
+    #     saveCompleteId(browser_id_op, op_platformType)
+    #     logger.info(f'{browser_id_op}已完成操作')
+    # else:
+    #     logger.error(f'{browser_id_op}有异常情况，发生中断')
+    # page.quit()
+
+    send_data = {
+        'run_browser_list': [browser_id_op]
+    }
     if flag:
+        send_data['tag'] = 'success'
         saveCompleteId(browser_id_op, op_platformType)
         logger.info(f'{browser_id_op}已完成操作')
     else:
+        send_data['tag'] = 'error'
         logger.error(f'{browser_id_op}有异常情况，发生中断')
+    requests.post(url=f'http://fbmessage.v7.idcfengye.com/changeTag', json=send_data)
     page.quit()
 
 
-def start_many_process(browsers, model, cycle_index, complete_browser_length, start_platformType, start_length):
+def start_many_process(browsers, model, cycle_index, complete_browser_length, start_platformType):
     # 启动多个进程来操作多个浏览器
 
     processes = []
@@ -152,8 +170,7 @@ def start_many_process(browsers, model, cycle_index, complete_browser_length, st
     for browsers_id in browsers:
         temp = (cycle_index - 1) * len(browsers) + count
         process = multiprocessing.Process(target=operate_facebook_listener,
-                                          args=(browsers_id, model, temp, complete_browser_length, start_platformType,
-                                                start_length))
+                                          args=(browsers_id, model, temp, complete_browser_length, start_platformType,))
         processes.append(process)
         process.start()
         count += 1
@@ -193,7 +210,7 @@ def exportIncompleteBrowserNumber():
 
 
 @reset_file
-def run(op_i, platformType_run, run_maxProcesses, run_length):
+def run(op_i, platformType_run, run_maxProcesses):
     model_list_run = ['get_user_fans']
     operate_index_run = op_i
 
@@ -221,7 +238,7 @@ def run(op_i, platformType_run, run_maxProcesses, run_length):
         except ValueError:
             current_browser_id_list = list(browser_id_set)
         start_many_process(current_browser_id_list, model_list_run[operate_index_run], cycle_count,
-                           complete_browser_length, platformType_run, run_length)
+                           complete_browser_length, platformType_run)
         cycle_count += 1
         for repeat_i in current_browser_id_list:
             browser_id_set.remove(repeat_i)
@@ -235,7 +252,7 @@ def run(op_i, platformType_run, run_maxProcesses, run_length):
     #     pool.join()
 
     logger.info('操作已全部完成')
-    reset_complete_txt(platformType_run)
+    # reset_complete_txt(platformType_run)
 
 
 if __name__ == "__main__":

@@ -11,6 +11,8 @@ from DrissionPage._pages.chromium_tab import ChromiumTab
 from DrissionPage._units.actions import Actions
 from loguru import logger
 
+from utils.decorator import monitor_function
+
 ROOT_PATH = 'browserDownload'
 
 
@@ -173,7 +175,8 @@ def brushVideo(page_brushVideo: Union[ChromiumPage, ChromiumTab], video_user_id)
     return all_like_count
 
 
-def brushPost(page_brushPost: Union[ChromiumPage, ChromiumTab], post_user_id):
+@monitor_function
+def brushPost(page_brushPost: Union[ChromiumPage, ChromiumTab], post_user_id, valid_event: threading.Event):
     """主页刷帖"""
     page_brushPost.set.scroll.smooth()
     ac = Actions(page_brushPost)
@@ -182,98 +185,106 @@ def brushPost(page_brushPost: Union[ChromiumPage, ChromiumTab], post_user_id):
 
     # 定义刷帖时间
     port_start_time = time.time()
-    cycle_time = random.uniform(30, 40) * 60
-    cycle_time = 60 * 10
+    cycle_time = random.uniform(15, 20) * 60
+    # cycle_time = 60 * 10
     all_like_count = 0
-    while True:
-        # 滚动到帖子可见
-        current_post = page_brushPost.ele(f'tag:div@role=article', index=current_index)
-        logger.info(f'{post_user_id}正在主页观看文章，当前观看了{current_index}篇文章')
-        page_brushPost.scroll.to_see(current_post, center=True)
-        ac.move_to(current_post, duration=3.5)
+    return_flag = True
+    try:
+        while True:
+            # 滚动到帖子可见
+            current_post = page_brushPost.ele(f'tag:div@role=article', index=current_index)
+            logger.info(f'{post_user_id}正在主页观看文章，当前观看了{current_index}篇文章')
+            page_brushPost.scroll.to_see(current_post, center=True)
+            ac.move_to(current_post, duration=3.5)
 
-        # 获取当前元素的静态版本，提升效率
-        s_current_ele = current_post.s_ele()
-        page_brushPost.wait(3, 5)
+            # 获取当前元素的静态版本，提升效率
+            s_current_ele = current_post.s_ele()
+            page_brushPost.wait(3, 5)
 
-        like_box_flag = s_current_ele.ele('tag:div@aria-label=赞')
+            like_box_flag = s_current_ele.ele('tag:div@aria-label=赞')
 
-        # states.is_alive
-        # 判断元素是否可用 True为可用
+            # states.is_alive
+            # 判断元素是否可用 True为可用
 
-        # 点赞时间触发概率
-        if 0.2 < random.random() < 0.22:
-            if like_box_flag:
-                like_box = current_post.ele('tag:div@aria-label=赞')
-                ac.move_to(like_box).click()
-                page_brushPost.wait(2, 4)
-                all_like_count += 1
-                logger.info(f'{post_user_id}点赞成功，当前已点赞{all_like_count}次')
-        # 确认当前帖子类型
-        if s_current_ele.ele('tag:div@data-pagelet=Reels'):
-            # 短视频
-            pass
-        elif s_current_ele.ele('tag:a@aria-label=Reels'):
-            # 短视频或Reels
-            pass
-        elif s_current_ele.ele('tag:video'):
-            # 视频
-            if 0.1 < random.random() < 0.3:
-                ac.move_to(current_post, duration=3.5).click()
-                try:
-                    flag, temp_count = brushVideo(page_brushPost, post_user_id)
-                    all_like_count += temp_count
-                except:
-                    logger.info(f'{post_user_id}视频页发生错误，正在回到上一页')
+            # 点赞时间触发概率
+            if 0.2 < random.random() < 0.22:
+                if like_box_flag:
+                    like_box = current_post.ele('tag:div@aria-label=赞')
+                    ac.move_to(like_box).click()
+                    page_brushPost.wait(2, 4)
+                    all_like_count += 1
+                    logger.info(f'{post_user_id}点赞成功，当前已点赞{all_like_count}次')
+            # 确认当前帖子类型
+            if s_current_ele.ele('tag:div@data-pagelet=Reels'):
+                # 短视频
+                pass
+            elif s_current_ele.ele('tag:a@aria-label=Reels'):
+                # 短视频或Reels
+                pass
+            elif s_current_ele.ele('tag:video'):
+                # 视频
+                if 0.1 < random.random() < 0.3:
+                    ac.move_to(current_post, duration=3.5).click()
+                    try:
+                        flag, temp_count = brushVideo(page_brushPost, post_user_id)
+                        all_like_count += temp_count
+                    except:
+                        logger.info(f'{post_user_id}视频页发生错误，正在回到上一页')
+                        ac.key_down(Keys.ESCAPE)
+                        page_brushPost.wait(3, 5)
+                        return_flag = False
+                        break
+                    logger.info(f'{post_user_id}视频观看完成，正在返回主页')
                     ac.key_down(Keys.ESCAPE)
                     page_brushPost.wait(3, 5)
-                    return False
-                logger.info(f'{post_user_id}视频观看完成，正在返回主页')
-                ac.key_down(Keys.ESCAPE)
-                page_brushPost.wait(3, 5)
-                return True
-        elif s_current_ele.ele('tag:div@aria-label=为你推荐'):
-            # 推荐小组
-            if 0.1 < random.random() < 0.2:
-                group_length = len(current_post.eles('tag:li'))
-                for _temp in range(1, group_length - 1):
-                    page_brushPost.wait(2, 3)
-                    if 0.2 < random.random() < 0.3:
-                        if _temp == 1:
-                            next_box = current_post.ele('tag:div@aria-label=向右箭头').ele('tag:i')
-                            ac.move_to(next_box).click()
-                        else:
-                            ac.click()
-                        logger.info(f'{post_user_id}正在进行小组翻页')
+                    break
+            elif s_current_ele.ele('tag:div@aria-label=为你推荐'):
+                # 推荐小组
+                if 0.1 < random.random() < 0.2:
+                    group_length = len(current_post.eles('tag:li'))
+                    for _temp in range(1, group_length - 1):
                         page_brushPost.wait(2, 3)
-                    elif 0.2 < random.random() < 0.22:
-                        logger.info(f'{post_user_id}准备加入小组')
-                        public_flag = current_post.ele('tag:li', index=_temp).ele('公开小组')
-                        if not public_flag:
-                            logger.info(f'{post_user_id}该小组不是公开小组，进入下一次循环')
-                            continue
-                        add_group_box = current_post.ele('tag:div@aria-label=加入小组', index=_temp)
-                        if add_group_box:
-                            ac.move_to(add_group_box).click()
-                            logger.info(f'{post_user_id}正在点击加入小组按钮')
-                            page_brushPost.wait(5, 8)
+                        if 0.2 < random.random() < 0.3:
+                            if _temp == 1:
+                                next_box = current_post.ele('tag:div@aria-label=向右箭头').ele('tag:i')
+                                ac.move_to(next_box).click()
+                            else:
+                                ac.click()
+                            logger.info(f'{post_user_id}正在进行小组翻页')
+                            page_brushPost.wait(2, 3)
+                        elif 0.2 < random.random() < 0.22:
+                            logger.info(f'{post_user_id}准备加入小组')
+                            public_flag = current_post.ele('tag:li', index=_temp).ele('公开小组')
+                            if not public_flag:
+                                logger.info(f'{post_user_id}该小组不是公开小组，进入下一次循环')
+                                continue
+                            add_group_box = current_post.ele('tag:div@aria-label=加入小组', index=_temp)
+                            if add_group_box:
+                                ac.move_to(add_group_box).click()
+                                logger.info(f'{post_user_id}正在点击加入小组按钮')
+                                page_brushPost.wait(5, 8)
+                                break
+                            else:
+                                logger.error(f'{post_user_id}已经加入该小组，无法重复加入')
                             break
-                        else:
-                            logger.error(f'{post_user_id}已经加入该小组，无法重复加入')
-                        break
-                    # 概率不加小组直接退出
-                    elif 0.3 < random.random() < 0.8:
-                        logger.info(f'{post_user_id}选择不加入小组，继续下一步操作')
-                        break
+                        # 概率不加小组直接退出
+                        elif 0.3 < random.random() < 0.8:
+                            logger.info(f'{post_user_id}选择不加入小组，继续下一步操作')
+                            break
 
-        running_time = time.time() - port_start_time
-        if running_time > cycle_time:
-            logger.info(f'{post_user_id}时间结束,正在结束流程，开始统计数据')
-            logger.info(f'{post_user_id}一共观看了{current_index}个文章，完成{all_like_count}次点赞,'
-                        f'耗时{math.floor(running_time / 60)}分{math.ceil(running_time % 60)}秒')
-            break
-        current_index += 1
-    return True
+            running_time = time.time() - port_start_time
+            if running_time > cycle_time:
+                logger.info(f'{post_user_id}时间结束,正在结束流程，开始统计数据')
+                logger.info(f'{post_user_id}一共观看了{current_index}个文章，完成{all_like_count}次点赞,'
+                            f'耗时{math.floor(running_time / 60)}分{math.ceil(running_time % 60)}秒')
+                break
+            current_index += 1
+    except Exception as e:
+        logger.error(e)
+
+    time.sleep(random.randint(30, 40))
+    valid_event.set()
+    return return_flag
 
 
 def face_init(page_init: Union[ChromiumPage, ChromiumTab], email_init, pwd_init, fa_two_init, user_id_init):
@@ -444,25 +455,23 @@ def collecting_groupId(page_collect: Union[ChromiumPage, ChromiumTab], searchGro
     page_collect.get('https://www.facebook.com/groups/feed/')
     page_collect.wait(10, 15)
     group_input_box = page_collect.ele('tag:input@aria-autocomplete=list', index=2, timeout=10)
-    group_input_box.input((group_key, Keys.ENTER))
+    group_input_box.input((f'Tips+{group_key}', Keys.ENTER))
     logger.info(f'{searchGroup_user_id}正在搜索小组')
     page_collect.wait(10, 15)
     logger.info(f'{searchGroup_user_id}开始滚动屏幕')
 
     count = 1
     while not stop_event.is_set():
-        page_collect.scroll.down(300)
-        page_collect.wait(3)
+        page_collect.scroll.down(800)
+        page_collect.wait(2,4)
         count += 1
         logger.info(f'{searchGroup_user_id}滚动第{count}次')
-        if count == 80:
-            stop_event.set()
-            break
+
     pass
 
 
 def collecting_group_userId(page_getUserId: Union[ChromiumPage, ChromiumTab], coll_groupUser_user_id,
-                            group_url, stop_event: threading.Event):
+                            group_url, stop_event: threading.Event, valid_event: threading.Event):
     page_getUserId.get(f'{group_url}members')
     page_getUserId.wait(10, 15)
     logger.info(f'{coll_groupUser_user_id}开始滚动屏幕')
@@ -473,21 +482,24 @@ def collecting_group_userId(page_getUserId: Union[ChromiumPage, ChromiumTab], co
         page_getUserId.wait(3)
         logger.info(f'{coll_groupUser_user_id}滚动第{count}次')
         count += 1
-        # if count == 180:
+        # if run_count == 180:
         #     stop_event.set()
         #     break
-    if stop_event.is_set():
-        logger.warning(f'{coll_groupUser_user_id}提前结束')
-        time.sleep(600)
+    # if stop_event.is_set():
+    #     logger.warning(f'{coll_groupUser_user_id}提前结束')
+    #     time.sleep(60)
     stop_event.set()
     logger.info(f'{coll_groupUser_user_id}获取小组成员id完成')
     pass
 
 
 def scroll_group_comment(page_comment: Union[ChromiumPage, ChromiumTab], comment_user_id, group_url,
-                         stop_event: threading.Event):
-    page_comment.get(group_url)
-    page_comment.wait(10, 15)
+                         stop_event: threading.Event, valid_event: threading.Event):
+    if 'login' in page_comment.url:
+        page_comment.wait(30, 45)
+    else:
+        page_comment.get(group_url)
+        page_comment.wait(10, 15)
     current_tab = page_comment.get_tab(url='groups/')
     if not current_tab:
         logger.error(f'{comment_user_id}获取小组tab失败，准备返回主页')
@@ -503,7 +515,8 @@ def scroll_group_comment(page_comment: Union[ChromiumPage, ChromiumTab], comment
             temp_time = time.time()
             current_tab.refresh()
             current_tab.wait(20)
-    time.sleep(300)
+
+
 # check
 
 def fa2_test():

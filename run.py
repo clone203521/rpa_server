@@ -11,9 +11,12 @@ from loguru import logger
 
 import database_util as dbu
 import listener_facebook_process as listen_face
+import listener_tiktok_process as listen_tiktok
 import open_broswer as open_b
+import run_peocess_ins as run_ins
 import run_process as run_tk
 import run_process_face as run_face
+import run_process_ws as run_ws
 from models import AccessRecord, db
 from utils import my_utils
 
@@ -33,11 +36,11 @@ with app.app_context():
 
 @app.route('/')
 def hello():
-    # return f"<span id='id_test' style='font-size:100px;'><strong>当前已访问{count-1}个浏览器"
+    # return f"<span id='id_test' style='font-size:100px;'><strong>当前已访问{run_count-1}个浏览器"
     # 查询数据库以获取访问记录总数
     total_access_count = AccessRecord.query.with_entities(db.func.sum(AccessRecord.count)).scalar() + 1931
     data = {
-        'count': total_access_count,
+        'run_count': total_access_count,
         'les_count': len(os.listdir('user_id_txt')) - total_access_count,
     }
 
@@ -55,7 +58,7 @@ def add_info():
             tags = bro_list['tags'][bro].replace('"', '')
         except AttributeError:
             tags = None
-        dbu.add_browser(bro_list["acc_id"][bro], bro_list['id'][bro], bro_list['group'][bro],
+        dbu.add_browser(bro_list["acc_id_g"][bro], bro_list['id'][bro], bro_list['group'][bro],
                         tags, bro_list['ip'][bro], bro_list['countrycode'][bro])
 
     return {'msg': '添加成功', 'status_code': 'success'}
@@ -130,6 +133,10 @@ def execution_method():
         run_tk.run(3, _current_function, _maxProcesses)
         print("Tiktok评论")
 
+    def get_tk_fans(_browser_list=None, _maxProcesses=None, _current_function=None):
+        """采集Tiktok用户粉丝"""
+        listen_tiktok.run(0, _current_function, _maxProcesses)
+
     def fb_brushPost(_browser_list=None, _maxProcesses=None, _current_function=None):
         """Facebook养号"""
         run_face.run2(1, _current_function, _maxProcesses)
@@ -144,6 +151,14 @@ def execution_method():
         """Fb获取小组信息"""
         listen_face.run(0, _current_function, _maxProcesses)
         print("Fb获取小组信息")
+
+    def get_groupTel_all(_browser_list=None, _maxProcesses=None, _current_function=None):
+        """获取ws群组电话"""
+        run_ws.run(0, _current_function, _maxProcesses)
+
+    def ins_get_user_fans(_browser_list=None, _maxProcesses=None, _current_function=None):
+        """Ins获取用户粉丝"""
+        run_ins.run(1, _current_function, _maxProcesses)
 
     @change_status
     def run_with_args(run_method, run_browser_list: list, max_processes: int, func_value: str = None):
@@ -168,6 +183,9 @@ def execution_method():
         "listen_fb_comment": listen_fb_comment,
         "get_fb_newMember": get_fb_newMember,
         "get_fb_groupInfo": get_fb_groupInfo,
+        'get_tk_fans': get_tk_fans,
+        'ws_get_groupTel': get_groupTel_all,
+        'ins_get_user_fans': ins_get_user_fans,
     }
     data = request.get_json()['data']
     logger.info(data)
@@ -207,6 +225,24 @@ def delete_user():
     return requests.post(url=f'http://fbmessage.v7.idcfengye.com/changeTag', json=request.get_json()['data']).json()
 
 
+@app.route('/add_FbAccount', methods=['GET', 'POST'])
+def add_FbAccount():
+    data = request.get_json()
+    acc = dbu.FbAccount(**data)
+    msg = acc.save()
+
+    return {'msg': msg}
+
+
+@app.route('/get_FbPwd', methods=['GET', 'POST'])
+def get_FbPwd():
+    data = request.get_json()
+    pwd = dbu.select_fbAccountPwd(data['id'])
+    if not pwd:
+        return {'msg': False}
+    return {'msg': pwd}
+
+
 def get_dates():
     return sorted(set(record.access_date for record in AccessRecord.query.all()))
 
@@ -216,4 +252,4 @@ def get_ips():
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=9777, debug=True)
+    app.run(host='0.0.0.0:12144', port=12144, debug=False)

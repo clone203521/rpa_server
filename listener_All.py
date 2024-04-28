@@ -38,7 +38,7 @@ def listener_tiktok_fans(tiktok_fans_page):
         try:
             temp = temp_json['userList'][0]
             save_to_json(temp_json, 'tiktok_fans', username)
-            logger.info(f'监听到第{count}个数据包')
+            logger.success(f'监听到第{count}个数据包')
             count += 1
         except Exception as e:
             logger.error(f'当前数据包没有用户列表')
@@ -46,7 +46,7 @@ def listener_tiktok_fans(tiktok_fans_page):
 
 
 def listen_group_member(page_add_friInGp: Union[ChromiumPage, ChromiumTab], user_id_add_FriInGp, listen_group_id,
-                        stop_event: threading.Event):
+                        stop_event: threading.Event, valid_event: threading.Event):
     """监听小组成员"""
 
     # page_add_FriInGp.get(group_url)
@@ -55,7 +55,7 @@ def listen_group_member(page_add_friInGp: Union[ChromiumPage, ChromiumTab], user
     count = 1
     page_add_friInGp.wait(3)
     for packet in page_add_friInGp.listen.steps(timeout=60):
-        if stop_event.is_set():
+        if stop_event.is_set() or valid_event.is_set():
             break
         logger.info(f'{user_id_add_FriInGp}============={count}')
         try:
@@ -63,14 +63,14 @@ def listen_group_member(page_add_friInGp: Union[ChromiumPage, ChromiumTab], user
         except (KeyError, TypeError):
             has_aaa_key = False
         if has_aaa_key:
-            logger.info(f'{user_id_add_FriInGp}监听到第{count}个数据包')
+            logger.success(f'{user_id_add_FriInGp}监听到第{count}个数据包')
             count += 1
             my_utils.save_userId_toTxt(packet.response.body, listen_group_id, user_id_add_FriInGp)
-            # if count == 100:
+            # if run_count == 100:
             #     stop_event.set()
             #     break
     stop_event.set()
-    time.sleep(120)
+    time.sleep(30)
     logger.info(f'{user_id_add_FriInGp}监听结束')
     return True
 
@@ -91,14 +91,14 @@ def listen_group_info(page_listen_gpInfo: Union[ChromiumPage, ChromiumTab], user
         except (KeyError, TypeError):
             has_aaa_key = False
         if has_aaa_key:
-            logger.info(f'{user_id_add_FriInGp}监听到第{count}个数据包')
+            logger.success(f'{user_id_add_FriInGp}监听到第{count}个数据包')
             count += 1
             my_utils.save_groupInfo_toJson(packet.response.body['data']['serpResponse']['results']['edges'],
                                            group_key, user_id_add_FriInGp)
-            if count == 9:
+            if count == 20:
                 stop_event.set()
                 break
-    time.sleep(120)
+    time.sleep(30)
     stop_event.set()
     return True
 
@@ -118,11 +118,11 @@ def listen_fans_tiktok(page_listen_tiktok_fans: Union[ChromiumPage, ChromiumTab]
         except (KeyError, TypeError):
             has_aaa_key = False
         if has_aaa_key:
-            logger.info(f'{user_id_fans_tiktok}监听到第{count}个数据包')
+            logger.success(f'{user_id_fans_tiktok}监听到第{count}个数据包')
             count += 1
             my_utils.save_userFans_toJson(packet.response.body['userList'],
                                           username, user_id_fans_tiktok)
-            if count == 100 or stop_event.is_set():
+            if stop_event.is_set():
                 stop_event.set()
                 break
 
@@ -130,30 +130,37 @@ def listen_fans_tiktok(page_listen_tiktok_fans: Union[ChromiumPage, ChromiumTab]
 
 
 def listen_group_comment(page_listen_comment: Union[ChromiumPage, ChromiumTab], user_id_comment, group_url,
-                         stop_event: threading.Event):
+                         stop_event: threading.Event, valid_event: threading.Event):
     """监听小组评论"""
     page_listen_comment.listen.start('/api/graphql/')  # 开始监听，指定获取包含该文本的数据包
     logger.info(f'{user_id_comment}监听开始')
     count = 1
+    user_set = set()
 
     for packet in page_listen_comment.listen.steps(timeout=60):
+        if valid_event.is_set() or stop_event.is_set():
+            break
         try:
             user_list = my_utils.extract_comment(packet.response.body)
         except Exception as e:
             logger.error(e)
             continue
-        if count > 3 or stop_event.is_set():
+        if count > 3:
+            logger.success(f'{user_id_comment}私信阶段提前结束')
             break
         for user in user_list:
+            if user in user_set:
+                continue
             new_tab = page_listen_comment.new_tab(f'https://www.facebook.com/messages/t/{user}')
             flag = send_message(new_tab, user_id_comment)
             if flag:
+                user_set.add(user)
                 logger.info(f'{user_id_comment}发送成功，当前共发送{count}条信息')
                 count += 1
             else:
                 logger.error(f'{user_id_comment}评论发送失败')
             new_tab.close()
-    time.sleep(120)
+    time.sleep(30)
     stop_event.set()
     return True
 
@@ -162,8 +169,10 @@ def send_message(page_send_message: Union[ChromiumPage, ChromiumTab], user_id_me
     try:
         page_send_message.wait(3, 6)
         input_box = page_send_message.ele('@aria-label=发消息', timeout=10)
+        # https://linktr.ee/olbeca02
+        # https://sbf.quanwangtui.com/mycard/MjiAfma
         input_box.input(
-            '''🌸 Thank you for your interest! 🛍️ We're thrilled to announce our Mother's Day celebration with a fantastic 40% discount on all Gucci, LV, Chanel, Prada bags and more! 🎉 As a professional Chinese factory, we specialize in providing 1:1 quality replicas of these luxurious brands, with free shipping worldwide! 🌍✨ If you're interested in upgrading your collection or surprising a loved one, feel free to add me on WhatsApp at https://wa.me/message/3W5Z6CJOWV32L1 for more details and personalized assistance. 📲💼 Hurry, this offer won't last forever! 🎁 #MothersDaySale #LuxuryReplica''')
+            '''🌸 Thank you for your interest! 🛍️ We're thrilled to announce our Mother's Day celebration with a fantastic 40% discount on all Gucci, LV, Chanel, Prada bags and more! 🎉 As a professional Chinese factory, we specialize in providing 1:1 quality replicas of these luxurious brands, with free shipping worldwide! 🌍✨ If you're interested in upgrading your collection or surprising a loved one, feel free to add me on WhatsApp at https://linktr.ee/olbeca02 for more details and personalized assistance. 📲💼 Hurry, this offer won't last forever! 🎁 #MothersDaySale #LuxuryReplica''')
         page_send_message.ele('@aria-label=按 Enter 键发送').click()
     except Exception as e:
         logger.error(e)
@@ -185,6 +194,32 @@ def listen_facebook_auto(page_listen_comment: Union[ChromiumPage, ChromiumTab], 
                     ac.click()
                     page_listen_comment.wait(1, 2)
         page_listen_comment.wait(5, 10)
+
+
+def listen_self_comment(page_self_comment: Union[ChromiumPage, ChromiumTab], user_id_fans_tiktok,
+                        stop_event: threading.Event):
+    """监听主账号评论显示数据"""
+    page_self_comment.listen.start('notice/multi/?WebIdLastTime')  # 开始监听，指定获取包含该文本的数据包
+
+    logger.info(f'{user_id_fans_tiktok}监听开始')
+    # username = user_url_fans_tiktok.split('@')[-1]
+    count = 1
+
+    for packet in page_self_comment.listen.steps(timeout=30):
+        try:
+            has_aaa_key = any("notice_lists" in key for key in packet.response.body.keys())
+        except (KeyError, TypeError, AttributeError):
+            has_aaa_key = False
+        if has_aaa_key:
+            logger.success(f'{user_id_fans_tiktok}监听到第{count}个数据包')
+            count += 1
+            break_flag = my_utils.save_selfCommentToJson(packet.response.body['notice_lists'][0]['notice_list'])
+            if break_flag or stop_event.is_set():
+                logger.success(f'{user_id_fans_tiktok}监听结束')
+                stop_event.set()
+                break
+    stop_event.set()
+    return True
 
 
 if __name__ == '__main__':

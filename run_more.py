@@ -2,31 +2,55 @@ import listener_facebook_process as run_listen_face
 import run_process as run_tk
 import run_process_face as run_face
 
-if __name__ == '__main__':
-    model_list = ['modify_personal_data', 'upload_video', 'brushVideo', 'commentAreaAt']
-    face_model = ['login_init', 'brushPost', 'joinGroup']
-    model_list_run = ['get_group_info', 'get_group_userId', 'listen_group_comment']
 
-    count = 3
+def run_loop(run_count):
     platformType_tk = 'tik_all'
-    platformType_face = 'facebook_4_10'
+    # platformType_face = 'facebook_4_10'
     face_list = 'facebook_account'
+
+    flag_y = input('是否重置文件: ')
+    if flag_y == 'y' or flag_y == 'Y':
+        with open(f'./txt_path/{platformType_tk}_complete_id.txt', 'w', encoding='utf8') as f:
+            f.write('')
+        with open(f'./txt_path/{face_list}_complete_id.txt', 'w', encoding='utf8') as f:
+            f.write('')
+
     while True:
-        if count < 2:
+        # print('count=', run_count)
+        if run_count < 2:
+            # if run_count == 0:
+            #     my_utils.move_video_txt(platformType_tk)
             run_tk.run(1, platformType_tk, 8)
-        elif 2 <= count < 4:
+        elif 2 <= run_count < 4:
             run_tk.run(2, platformType_tk, 12)
-        elif 4 <= count < 6:
+        elif 4 <= run_count < 6:
             run_tk.run(3, platformType_tk, 12)
-        elif 6 <= count < 8:
+        elif 8 <= run_count < 10:
             run_listen_face.run(2, face_list, 10)
-        elif 8 <= count < 10:
-            run_face.run2(1, platformType_face, 9)
+        elif 6 <= run_count < 8:
+            run_face.run2(1, face_list, 10)
+        elif 10 <= run_count < 12:
+            run_tk.run(2, platformType_tk, 12)
+        elif 14 <= run_count < 16:
+            run_listen_face.run(2, face_list, 10)
+        elif 20 <= run_count < 22:
+            run_face.run2(1, face_list, 10)
         else:
             run_tk.run(2, platformType_tk, 12)
-        if count % 2 == 0:
+        run_count += 1
+
+        if run_count % 2 == 0:
             with open(f'./txt_path/{platformType_tk}_complete_id.txt', 'w', encoding='utf8') as f:
                 f.write('')
-            with open(f'./txt_path/{platformType_face}_complete_id.txt', 'w', encoding='utf8') as f:
+            with open(f'./txt_path/{face_list}_complete_id.txt', 'w', encoding='utf8') as f:
                 f.write('')
-        count += 1
+
+
+if __name__ == '__main__':
+    model_list_tk = ['modify_personal_data', 'upload_video', 'brushVideo', 'commentAreaAt']
+    face_model = ['login_init', 'brushPost', 'joinGroup']
+    face_listen = ['get_group_info', 'get_group_userId', 'listen_group_comment']
+
+    count = 2
+
+    run_loop(count)

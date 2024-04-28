@@ -38,13 +38,13 @@ class Run:
             'Content-Type': 'application/json',
             'Accept': 'application/json'
         }
-        self.finger_url = 'http://local.adspower.com:50325'
+        self.finger_url = 'http://127.0.0.1:50325'
 
     # 根据对应user_id打开对应窗口
     def start_userID(self, user_id):
-        url = f'{self.finger_url}/api/v1/browser/start'
+        url = f'{self.finger_url}/api/v1/browser/start?user_id={user_id}'
         data = {'user_id': user_id}
-        res = requests.get(url, headers=self.finger_headers, params=data)
+        res = requests.get(url, headers=self.finger_headers)
         if res.status_code == 200:
             res_result = json.loads(res.text)
             if res_result["msg"] == "Success" or res_result["msg"] == "success":
@@ -63,13 +63,26 @@ class Run:
         chrome_option.add_experimental_option("debuggerAddress", selenium_address)  # 这行命令必须加上，才能启动指纹浏览器
 
         driver = webdriver.Chrome(service=service, options=chrome_option)
+
+        time.sleep(2)
+        # # 获取所有窗口句柄
+        # window_handles = driver.window_handles
+        # # 切换到最后一个标签页
+        # # 遍历除最后一个句柄之外的所有句柄
+        # for handle in window_handles[:-1]:
+        #     # 关闭当前标签页
+        #     driver.switch_to.window(window_handles[-1])
+        #     driver.close()
+
         # driver.maximize_window()
         page = from_selenium(driver)
-        close_tab = page.get_tab(url='https://start.adspower.net/')
-        if close_tab:
-            close_tab.close()
+
         page.set.window.max()
         page.set.window.mini()
+        # tab_count = page_count.tabs_count
+        while page.tabs_count != 1:
+            tab = page.get_tab(id_or_num=2)
+            tab.close()
 
         # os.makedirs(f'./{ROOT_PATH}/{user_id}', exist_ok=True)
 
@@ -95,7 +108,8 @@ def operate_tiktok(browser_id_op, model, temp_index, add_index, op_platformType)
             # time.sleep(random.uniform(0.1, 5))
             selenium_webdriver, selenium_address, user_id = r.start_userID(user_id=browser_id_op)
             logger.info(f'{selenium_webdriver}----{selenium_address}----{user_id}')
-        except:
+        except Exception as e:
+            logger.error(e)
             time.sleep(random.uniform(2, 4))
             continue
         break
@@ -109,7 +123,7 @@ def operate_tiktok(browser_id_op, model, temp_index, add_index, op_platformType)
     #
     logger.info(f'当前是第{temp_index}台浏览器')
 
-    # logger.info(page.url)
+    # logger.info(page_count.url)
     flag = False
     if page.url.find('https://www.tiktok.com/') != -1 or len(page.url) > len('https://www.tiktok.com/foryou'):
         page.get('https://www.tiktok.com/')
@@ -138,9 +152,11 @@ def operate_tiktok(browser_id_op, model, temp_index, add_index, op_platformType)
             # if next_flag == '123':
             #     logger.info(f'用户id文件消耗完毕')
             #     flag = True
+        elif model == 'get_realName':
+            flag = tiktok_caption.get_self_name(page, browser_id_op)
     else:
         flag = False
-    # page.wait(15, 20)
+    # page_count.wait(15, 20)
     platformType1 = 'tiktok'
 
     send_data = {
@@ -206,7 +222,7 @@ def exportIncompleteBrowserNumber():
 
 @reset_file
 def run(op_i, platformType_run, maxProcesses):
-    model_list = ['modify_personal_data', 'upload_video', 'brushVideo', 'commentAreaAt']
+    model_list = ['modify_personal_data', 'upload_video', 'brushVideo', 'commentAreaAt', 'get_realName']
     operate_index_run = op_i
 
     # 最大进程数
@@ -254,7 +270,7 @@ def run(op_i, platformType_run, maxProcesses):
     #     pool.join()
 
     logger.info('操作已全部完成')
-    reset_complete_txt(platformType_run)
+    # reset_complete_txt(platformType_run)
 
 
 @reset_file
@@ -265,6 +281,7 @@ def run_loop(start_index, loop_platformType, reset_video=False):
             if reset_video and i == 0:
                 logger.info('重置视频文件')
                 my_utils.move_video_txt(loop_platformType)
+                break
             run(1, loop_platformType, 8)
         elif 2 <= i < 4:
             run(3, loop_platformType, 16)
@@ -281,11 +298,12 @@ def run_loop(start_index, loop_platformType, reset_video=False):
 
 if __name__ == "__main__":
     op_index_list = [2]
-    model_list = ['modify_personal_data', 'upload_video', 'brushVideo', 'commentAreaAt']
+    model_list = ['modify_personal_data', 'upload_video', 'brushVideo', 'commentAreaAt', 'get_realName']
     # 选择浏览器id文件
     platformType = 'tik_all'
-    start_index = 2
-    # run(0, platformType_run=platformType, maxProcesses=12)
+    start_index = 0
+    # run(3, platformType_run=platformType, maxProcesses=12)
 
     # 0 -> 发视频，评论，刷视频; 2 -> 评论，刷视频; 4 -> 刷视频
     run_loop(start_index, loop_platformType=platformType, reset_video=True)
+    # run(0, platformType_run=platformType, maxProcesses=12)

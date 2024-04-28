@@ -27,15 +27,15 @@ def image_downloader():
     url = 'https://mbasic.facebook.com/'
     page = ChromiumPage(9222)
     page.set.download_path('./image_downloader_facebook')
-    # page.get(url)
+    # page_count.get(url)
     # # 读取编号转id的json文件
     # with open('pinterest_cookies.json', 'r', encoding='utf8') as f:
     #     tran_json = json.load(f)
-    # page.set.cookies(tran_json)
-    # page.refresh()
+    # page_count.set.cookies(tran_json)
+    # page_count.refresh()
     # global global_set
     # while True:
-    #     main_box = page.wait.ele_loaded('tag:div@role=list', timeout=120)
+    #     main_box = page_count.wait.ele_loaded('tag:div@role=list', timeout=120)
     #     temp_box = main_box.eles('tag:div@role=listitem')
     #     download_urls = []
     #     for element in temp_box:
@@ -46,11 +46,11 @@ def image_downloader():
     #
     #     download_start(download_urls)
     #
-    #     page.scroll.to_bottom()
-    #     page.wait(5, 10)
+    #     page_count.scroll.to_bottom()
+    #     page_count.wait(5, 10)
 
     page.listen.start('https://scontent-yyz1-1.xx.fbcdn.net/v/t39.30808-6/433')  # 开始监听，指定获取包含该文本的数据包
-    # page.get('https://gitee.com/explore/all')  # 访问网址
+    # page_count.get('https://gitee.com/explore/all')  # 访问网址
 
     d = DownloadKit()
     count = 1
@@ -67,8 +67,8 @@ def image_downloader():
 def test1():
     url = 'https://www.baidu.com'
     page = ChromiumPage(9222)
-    # page.set.download_path('./image_downloader_facebook')
-    # page.get(url)
+    # page_count.set.download_path('./image_downloader_facebook')
+    # page_count.get(url)
     input_box = page.ele('#kw')
     # input_box.input(Keys.BACKSPACE, clear=False)
     page.run_js("arguments[0].value = arguments[0].value.slice(0, -1);", input_box)

@@ -1,8 +1,8 @@
 import threading
 import time
 
-import listener_All
 import facebook_caption
+import listener_All
 import tiktok_caption
 
 
@@ -38,6 +38,9 @@ def get_group_userId(page_get_groupUserId, getGroupUser_userId, group_id):
         thread.start()
         threads.append(thread)
 
+    timer = threading.Timer(60 * 60 * 1, stop_event.set)
+    timer.start()
+
     # 等待所有线程完成
     for thread in threads:
         thread.join()
@@ -68,6 +71,29 @@ def test():
                                   args=(stop_event,))
         thread.start()
         threads.append(thread)
+
+    # 等待所有线程完成
+    for thread in threads:
+        thread.join()
+
+    return True
+
+
+def get_self_comments(page_get_self_comments, getGroup_userId, user_url):
+    functions = [tiktok_caption.collecting_self_comment, listener_All.listen_self_comment]
+    threads = []
+    # 导入线程函数后创建一个事件对象
+    stop_event = threading.Event()
+
+    # 使用循环创建线程，并传递参数
+    for function in functions:
+        thread = threading.Thread(target=function,
+                                  args=(page_get_self_comments, getGroup_userId, stop_event,))
+        thread.start()
+        threads.append(thread)
+
+    timer = threading.Timer(60 * 30, stop_event.set)
+    timer.start()
 
     # 等待所有线程完成
     for thread in threads:

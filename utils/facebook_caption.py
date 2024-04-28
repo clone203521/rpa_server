@@ -156,7 +156,7 @@ def brushPost(page_brushPost, post_user_id):
             # # 短视频
             # if 0.1 < random.random() < 0.05:
             #     ac.move_to(current_post).click()
-            #     flag, count = brushReel(page_brushPost, post_user_id)
+            #     flag, run_count = brushReel(page_brushPost, post_user_id)
             #     ac.key_down(Keys.ESCAPE)
             #     page_brushPost.wait(3, 5)
             #     logger.info(f'{post_user_id}正在返回')

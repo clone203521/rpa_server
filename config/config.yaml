@@ -1,0 +1,13 @@
+tk_comment:
+  low_min: 1  # 看视频时触发评论事件 最低多少条
+  low_max: 3  # 最高多少条
+  normal_min: 3 # 执行评论任务时，最低多少条
+  normal_max: 4 # 最高多少条
+tk_brushVideo:
+  min_time: 15  # 刷视频最低时间 单位/分钟
+  max_time: 20 # 同上，最高时间
+  comment_probability: 0.1 # 触发评论事件概率 建议低于0.2 概率范围 0-1
+face_brushPost:
+  min_time: 15  # 刷帖子最低时间 单位/分钟
+  max_time: 20 # 同上，最高时间
+

@@ -10,7 +10,6 @@ import time
 
 import pandas as pd
 import requests
-from DrissionPage._units.actions import Actions
 from DrissionPage.common import from_selenium
 from loguru import logger
 from selenium import webdriver
@@ -30,7 +29,7 @@ os.makedirs(f'{LOG_PATH}/{current_data}', exist_ok=True)
 logger.add(f'{LOG_PATH}/{current_data}/{formatted_time}.log', format="{time} {level} {message}", level="INFO")
 
 # group_list = pd.read_csv('facebook_group/group_info/00group_csv/group_info.csv', encoding='utf8')
-group_list = pd.read_excel('facebook_group/group_info/00group_csv/new_group.xlsx')
+group_list = pd.read_csv('facebook_group/group_info/00group_csv/group_info_final20.csv')
 
 
 class Run:
@@ -40,7 +39,7 @@ class Run:
             'Content-Type': 'application/json',
             'Accept': 'application/json'
         }
-        self.finger_url = 'http://local.adspower.com:50325'
+        self.finger_url = 'http://127.0.0.1:50325'
 
     # 根据对应user_id打开对应窗口
     def start_userID(self, user_id):
@@ -65,11 +64,12 @@ class Run:
         chrome_option.add_experimental_option("debuggerAddress", selenium_address)  # 这行命令必须加上，才能启动指纹浏览器
 
         driver = webdriver.Chrome(service=service, options=chrome_option)
+
         # driver.maximize_window()
         page = from_selenium(driver)
-        close_tab = page.get_tab(url='https://start.adspower.net/')
-        if close_tab:
-            close_tab.close()
+        while page.tabs_count != 1:
+            tab = page.get_tab(id_or_num=2)
+            tab.close()
         page.set.window.max()
         page.wait(0.5)
         page.set.window.mini()
@@ -96,6 +96,9 @@ def saveCurrentBrower(user_id_save):
         msvcrt.locking(file.fileno(), msvcrt.LK_LOCK, 1)  # 获取锁
         file.write(f"{user_id_save}\n")
         msvcrt.locking(file.fileno(), msvcrt.LK_UNLCK, 1)  # 释放锁
+
+
+# group_add = 0
 
 
 # 将user_id存入任务队列中
@@ -125,46 +128,41 @@ def operate_facebook_listener(browser_id_op, model, temp_index, add_index, op_pl
     if len(page.url) > len('https://www.facebook.com/'):
         page.get('https://www.facebook.com/')
         page.wait(10, 20)
-    ac = Actions(page)
-    ac.move_to((400, 400)).click()
+    # ac = Actions(page)
+    # ac.move_to((400, 400)).click()
+    # page.wait(1, 3)
+    # ac.click()
+    # page.wait(1, 3)
+    # ac.click()
     page.wait(1, 3)
-    ac.click()
-    page.wait(1, 3)
-    ac.click()
-    page.wait(1, 3)
-    valid_event = valid_event = threading.Event()
+    global group_add
+    valid_event = threading.Event()
     if model == 'get_group_info':
-        group_keyword = ['Louis Vuitton', 'Gucci', 'Chanel', 'Prada', 'Hermès', 'Dior', 'Burberry', 'Fendi',
-                         'Saint Laurent', 'Balenciaga', 'Givenchy', 'Bottega Veneta', 'Valentino', 'Celine',
-                         'Alexander McQueen']
-        if temp_index - 1 > len(group_keyword):
+        group_keyword = ['Travel', 'Tour', 'Health', 'Cleaning', 'Sewing', 'Hair', 'Skin', 'Makeup', 'Make-up',
+                         'Jewelry', 'Remedies', 'Pregnancy', 'Beauty', 'Weight loss', 'Fitness', 'Baking', 'Self-care',
+                         'Mother', 'Baby']
+        if temp_index - 1 + 6 >= len(group_keyword):
             flag = False
+            logger.info('关键词用尽')
         else:
+            keyword = group_keyword[temp_index - 1 + 6]
             flag = listen_caption_facebook.get_group_info(getGroup_userId=browser_id_op,
-                                                          keyword=group_keyword[temp_index - 1],
+                                                          keyword=keyword,
                                                           valid_event=valid_event, page_get_groupId=page)
     elif model == 'get_group_userId':
-        temp_add = 30
-        group_add = op_length
-        if group_add + temp_index - 1 + temp_add > len(group_list['group_url']):
-            logger.error(f'小组url已用完')
-            flag = False
-        else:
-            flag = listen_caption_facebook.get_group_userId(page_get_groupUserId=page,
-                                                            getGroupUser_userId=browser_id_op,
-                                                            group_id=group_list['group_url'][
-                                                                temp_index - 1 + group_add + temp_add],
-                                                            valid_event=valid_event)
+        temp_add = 0
+        flag = listen_caption_facebook.get_group_userId(page_get_groupUserId=page,
+                                                        getGroupUser_userId=browser_id_op,
+                                                        group_id=group_list['group_url'][
+                                                            temp_index - 1 + temp_add],
+                                                        valid_event=valid_event)
     elif model == 'listen_group_comment':
-        group_add = op_length
-        if group_add + temp_index - 1 > len(group_list['group_url']):
-            logger.error(f'小组url已用完')
-            flag = False
-        else:
-            flag = listen_caption_facebook.monitoring_Team_Comments(getGroupUser_userId=browser_id_op,
-                                                                    group_url=group_list['group_url'][
-                                                                        temp_index - 1 + group_add],
-                                                                    page_get_groupUserId=page, valid_event=valid_event)
+        logger.warning(f'{browser_id_op}当前小组链接: {group_list["group_url"][temp_index - 1]}')
+
+        flag = listen_caption_facebook.monitoring_Team_Comments(getGroupUser_userId=browser_id_op,
+                                                                group_url=group_list['group_url'][
+                                                                    temp_index - 1],
+                                                                page_get_groupUserId=page, valid_event=valid_event)
     send_data = {
         'run_browser_list': [browser_id_op]
     }
@@ -183,6 +181,19 @@ def start_many_process(browsers, model, cycle_index, complete_browser_length, st
     # 启动多个进程来操作多个浏览器
     processes = []
     count = 1
+    with open(f'txt_path/group_start_index.txt', 'r') as file:
+        try:
+            start_group_add = int(file.read())
+        except ValueError:
+            with open(f'txt_path/group_start_index.txt', 'w') as file_1:
+                file_1.write('1')
+            start_group_add = 1
+
+    if start_group_add + len(browsers) > len(group_list):
+        start_group_add = 0
+        with open(f'txt_path/group_start_index.txt', 'w') as file:
+            file.write(str(start_group_add))
+    start_length = start_group_add
     for browsers_id in browsers:
         temp = (cycle_index - 1) * len(browsers) + count
         process = multiprocessing.Process(target=operate_facebook_listener,
@@ -196,6 +207,9 @@ def start_many_process(browsers, model, cycle_index, complete_browser_length, st
     # 等待所有进程完成
     for process in processes:
         process.join()
+    start_group_add += len(browsers)
+    with (open(f'txt_path/group_start_index.txt', 'w') as file_2):
+        file_2.write(str(start_group_add))
 
 
 def reset_complete_txt(del_platformType_run):
@@ -275,7 +289,7 @@ def run(op_i: int, platformType_run: str, maxProcesses: int, run_length: int = 0
     #     pool.join()
 
     logger.info('操作已全部完成')
-    reset_complete_txt(platformType_run)
+    # reset_complete_txt(platformType_run)
 
 
 @reset_file

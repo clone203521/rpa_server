@@ -2,6 +2,7 @@ import threading
 import time
 from typing import Union
 
+from DrissionPage._functions.keys import Keys
 from DrissionPage._pages.chromium_page import ChromiumPage
 from DrissionPage._pages.chromium_tab import ChromiumTab
 
@@ -11,7 +12,8 @@ from utils.decorator import monitor_function
 
 
 @monitor_function
-def get_group_info(page_get_groupId, getGroup_userId, keyword, valid_event: threading.Event):
+def get_group_info(page_get_groupId: Union[ChromiumPage, ChromiumTab], getGroup_userId, keyword,
+                   valid_event: threading.Event):
     functions = [facebook_caption.collecting_groupId, listener_All.listen_group_info]
     threads = []
     # 导入线程函数后创建一个事件对象
@@ -22,6 +24,10 @@ def get_group_info(page_get_groupId, getGroup_userId, keyword, valid_event: thre
         thread = threading.Thread(target=function, args=(page_get_groupId, getGroup_userId, keyword, stop_event,))
         thread.start()
         threads.append(thread)
+
+    # 使用 threading.Timer 定时器设置超时
+    timer = threading.Timer(60 * 10, stop_event.set)
+    timer.start()
 
     # 等待所有线程完成
     for thread in threads:
@@ -43,12 +49,12 @@ def get_group_userId(page_get_groupUserId, getGroupUser_userId, group_id, valid_
     # 创建线程并启动
     for function in functions:
         thread = threading.Thread(target=function,
-                                  args=(page_get_groupUserId, getGroupUser_userId, group_id, stop_event,))
+                                  args=(page_get_groupUserId, getGroupUser_userId, group_id, stop_event, valid_event,))
         thread.start()
         threads.append(thread)
 
     # 使用 threading.Timer 定时器设置超时
-    timer = threading.Timer(60 * 30, stop_event.set)
+    timer = threading.Timer(60 * 5, stop_event.set)
     timer.start()
 
     # 等待所有线程完成
@@ -72,12 +78,12 @@ def monitoring_Team_Comments(page_get_groupUserId: Union[ChromiumPage, ChromiumT
     # 创建线程并启动
     for function in functions:
         thread = threading.Thread(target=function,
-                                  args=(page_get_groupUserId, getGroupUser_userId, group_url, stop_event,))
+                                  args=(page_get_groupUserId, getGroupUser_userId, group_url, stop_event, valid_event,))
         thread.start()
         threads.append(thread)
 
-    hour = 1
-    listener_time = 60 * 30 * hour
+    hour = 0.25
+    listener_time = 60 * 60 * hour
     # 使用 threading.Timer 定时器设置超时
     timer = threading.Timer(listener_time, stop_event.set)
     timer.start()

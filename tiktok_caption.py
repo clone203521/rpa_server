@@ -1,4 +1,5 @@
 import math
+import os
 import random
 import re
 import threading
@@ -17,7 +18,7 @@ ROOT_PATH = 'browserDownload'
 
 
 def upload_video(page_upload: Union[ChromiumPage, ChromiumTab], user_id):
-    # page.set.window.full()
+    # page_count.set.window.full()
     # luxury bag #gucci #chanel #fyp #foryoupage  #tiktok
     # 点击上传按钮
     page_upload.get('https://www.tiktok.com/creator-center/upload?from=upload')
@@ -46,13 +47,16 @@ def upload_video(page_upload: Union[ChromiumPage, ChromiumTab], user_id):
 
     logger.info(f'{user_id}文件上传中，请等待')
     file_upload_box.wait(1, 3.2)
-    cancel = page_upload.wait.ele_loaded('tag:div@@text()=Cancel', timeout=20)
-    delete_flag = page_upload.wait.ele_deleted(cancel, timeout=500)
-    if delete_flag:
+    cancel = page_upload.wait.ele_loaded('tag:div@class:success-info', timeout=120)
+    if cancel:
         logger.info(f'{user_id}文件上传完成')
     else:
-        logger.error(f'{user_id}文件上传失败，请重试')
-        return False
+        edit_video = page_upload.wait.ele_loaded('tag:div@class:action-button', timeout=60)
+        if edit_video:
+            logger.info(f'{user_id}文件上传完成')
+        else:
+            logger.error(f'{user_id}文件上传失败，请重试')
+            return False
 
     # 输入视频标题
     title = page_upload.ele('tag:div@data-contents=true')
@@ -60,15 +64,16 @@ def upload_video(page_upload: Union[ChromiumPage, ChromiumTab], user_id):
 
     logger.info(f'{user_id}正在输入视频标题')
     tag_set = {'gucci', 'chanel', 'fyp', 'foryoupage', 'tiktok', 'louis', 'vuitton', 'prada', 'bag', 'shoes'}
-    tag_length = len(tag_set)
 
-    temp_click = page_upload.ele('tag:span@@text()=Post a video to your account')
+    temp_click = page_upload.ele('tag:span@@text()=Description')
+    if not temp_click:
+        temp_click = page_upload.wait.ele_loaded('tag:h1@@text()=Upload video')
     # 创建ActionChains实例
     ac = Actions(page_upload)
     for_count = 0
     title.input('luxury bag ', clear=True)
 
-    for _ in range(tag_length):
+    for _ in range(5):
         tag = random.choice(list(tag_set))
         tag_set.remove(tag)
         title.input('#', clear=False)
@@ -78,16 +83,14 @@ def upload_video(page_upload: Union[ChromiumPage, ChromiumTab], user_id):
         ac.move_to(temp_click).click()
         title.input(tag[-1], clear=False)
 
-        while_count = 1
         for next_i in range(3):
-            enter_flag = page_upload.wait.ele_loaded('tag:div@class=mentionSuggestions', timeout=2)
+            enter_flag = page_upload.wait.ele_loaded('tag:div@class:mention-list-popover', timeout=4)
             if enter_flag:
                 enter_box = enter_flag.child('tag:div').child('tag:div')
                 try:
                     enter_box.click()
                     for_count += 1
                 except:
-                    while_count += 1
                     continue
                 break
             else:
@@ -97,9 +100,6 @@ def upload_video(page_upload: Union[ChromiumPage, ChromiumTab], user_id):
                 else:
                     title.input(tag[-1], clear=False)
 
-        if for_count == 5:
-            break
-
     page_upload.scroll.to_bottom()
     logger.info(f'{user_id}标题输入完成')
     page_upload.wait(15)
@@ -107,7 +107,10 @@ def upload_video(page_upload: Union[ChromiumPage, ChromiumTab], user_id):
     # 点击上传按钮
     time.sleep(3)
     page_upload.ele('tag:div@class:btn-post').ele('tag:button').click()
+    start_time = time.time()
     while True:
+        if time.time() - start_time > 60 * 5:
+            return False
         manage = page_upload.wait.ele_loaded('tag:div@@text()=Manage your posts', timeout=3)
         if manage:
             break
@@ -130,7 +133,7 @@ def modify_personal_data(page_modify: Union[ChromiumPage, ChromiumTab], user_id_
         page_modify.ele('tag:span@@text()=Profile').click()
     except:
         logger.info(f'{user_id_modify},账号登陆失败')
-        page_modify.quit()
+        return False
 
     # 滑块验证
     if not my_utils.validation(page_modify, user_id_modify):
@@ -234,7 +237,7 @@ def brushVideo(page_brush: Union[ChromiumPage, ChromiumTab], brush_user_id):
 
     func_start_time = time.time()
     # 每个帐号刷视频的时间
-    cycle_time = random.uniform(60, 70) * 60
+    cycle_time = random.uniform(15, 20) * 60
     # cycle_time = 600
 
     like_count = 1
@@ -265,10 +268,10 @@ def brushVideo(page_brush: Union[ChromiumPage, ChromiumTab], brush_user_id):
         new_list = ['jfuv0oh', 'jfuv0oj', 'jfuv0ok', 'jfuv0om', 'jfuv0oo', 'jfuv0op', 'jfuv0oq', 'jfuv0or', 'jfuv0os',
                     'jfuv0ot']
         # 随机@人
-        if 0.1 < random.random() < 0.13 and random.random() > 10:
+        if 0.1 < random.random() < 0.15:
             if brush_user_id not in new_list:
                 try:
-                    commentAreaAt_low(page_brush, brush_user_id, random.randint(1, 50))
+                    commentAreaAt(page_brush, brush_user_id, random.randint(1, 50))
                 except Exception as e:
                     logger.error(e)
 
@@ -315,41 +318,8 @@ def commentAreaAt_low(page_comment: Union[ChromiumPage, ChromiumTab], comment_us
         else:
             return '//////.......'
 
-    videoUrl_list = ["https://www.tiktok.com/@wuhankgaudw/video/7352361561832377642",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7352141368271047978",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7327506954903948575",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7324876053237796127",
-                     "https://www.tiktok.com/@wuhankgtaudw/video/7323011907542158622",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7322718720193776927",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7322635449321753887",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7320143431563611422",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7320055183377976618",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7320054669710052654",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7320053666763951406",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7320052976784215342",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7320052248829119786",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7319769114392743199",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7319683281941810462",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7319384733329198366",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7316784758216805663",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7316704487048006943",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7316418916568403230",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7316361612728814879",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7315673436993375519",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7315609906072046878",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7315227351170796830",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7314948490969304350",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7314491195365887262",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7314109903113587998",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7313829725103770910",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7313739269741317407",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7313105634357038367",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7313075519967284511",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7312998306626538783",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7312740410651184415",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7312727649032473887",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7312701521504800031",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7312372622275153183"]
+    with open('utils/keyword/tk_comment_url.txt') as f:
+        videoUrl_list = f.read().splitlines()
 
     page_comment.get(random.choice(videoUrl_list))
     # page_comment.get('https://www.tiktok.com/@wuhankgaudw/video/7355304666814614827')
@@ -360,14 +330,17 @@ def commentAreaAt_low(page_comment: Union[ChromiumPage, ChromiumTab], comment_us
         return False
 
     title = page_comment.ele('tag:div@class=DraftEditor-root')
+    split_len = len(os.listdir('split')) - 2
 
-    file_path = f'./split/split_{random.randint(1, 150)}.txt'
+    file_path = f'./split/split_{random.randint(1, split_len)}.txt'
     try:
         with open(file_path, 'r', encoding='utf8') as comment_f:
             temp_lines = [line.strip() for line in comment_f.readlines()]
     except:
         logger.error(f'{comment_user_id},用户id文件已用完，请添加新文件后再运行')
         return False
+    with open('utils/keyword/at_words.txt', 'r', encoding='utf8') as comment_f:
+        keywords = comment_f.read().splitlines()
     # 从原始列表中抽取九个用户名
     lines = random.sample(temp_lines, 35)
 
@@ -389,25 +362,30 @@ def commentAreaAt_low(page_comment: Union[ChromiumPage, ChromiumTab], comment_us
         if full_box:
             ac.move_to(full_box).click()
             page_comment.wait(2, 3)
-        temp_click_box_Coordinates = page_comment.ele('tag:div@class:DivCommentContainer').rect.screen_location
-    # click_loc = tuple(map(int, temp_click_box_Coordinates))
     comment_input_count = 1
 
     # 每次评论@多少人
-    once_comment_people = 5
+    once_comment_people = 4
     # 一共评论多少次
-    comment_number = random.randint(5, 5)
+    comment_number = random.randint(3, 4)
     # return
     for once_comment in [lines[i:i + once_comment_people] for i in range(0, len(lines), once_comment_people)][
                         :comment_number]:
+        recommend = random.choice(keywords)
+        left_words = recommend[:20]
+        right_words = recommend[20:]
         title = page_comment.ele('tag:div@class=DraftEditor-root')
-        title.input('Gucci&LV&Chanel')
+        title.input(left_words)
 
         # post_box = page_comment.ele('tag:div@data-e2e=comment-post')
         # ac.move_to(post_box).click()
-        ac.type(' starting from $19')
-        emoji_box = page_comment.ele('tag:div@data-e2e=comment-emoji-icon')
-        ac.move_to(emoji_box).click().click().up(300)
+        ac.type(right_words)
+        emoji_box = page_comment.ele('tag:div@data-e2e=comment-emoji-icon').ele('tag:svg', index=1)
+        emoji_click = emoji_box.rect.click_point
+        emoji_click = (int(emoji_click[0]), int(emoji_click[1]))
+
+        ac.move_to(emoji_click).click().click().up(300)
+        # ac.move_to(emoji_box).click().up(300)
 
         logger.info(f'{comment_user_id}准备开始评论区@流程')
         timeout_count = 0
@@ -423,13 +401,17 @@ def commentAreaAt_low(page_comment: Union[ChromiumPage, ChromiumTab], comment_us
                     at_box_list = []
 
                 user_id_index = 0
+                if not at_box_list:
+                    timeout_count += 1
+                    continue
+
                 for box in at_box_list:
                     temp = get_string_between_tags(box.html)
                     if temp == comment:
                         break
                     user_id_index += 1
 
-                if user_id_index == len(at_box_list):
+                if user_id_index == len(at_box_list) and timeout_count == 0:
                     timeout_count += 1
                     try:
                         ac.type((Keys.CTRL, 'z'))
@@ -439,6 +421,14 @@ def commentAreaAt_low(page_comment: Union[ChromiumPage, ChromiumTab], comment_us
                         ac.type((Keys.CTRL, 'z'))
                     page_comment.wait(1, 3)
                     continue
+                elif timeout_count != 0:
+                    page_comment.wait(0.3, 1)
+                    id_list_box = page_comment.ele('tag:div@data-e2e=comment-at-user')
+                    id_box = id_list_box.ele('tag:span@data-e2e=comment-at-uniqueid', index=1)
+                    ac.move_to(id_list_box).scroll(on_ele=id_box).click()
+                    timeout_count = 0
+                    continue
+
                 page_comment.wait(0.3, 1)
                 id_list_box = page_comment.ele('tag:div@data-e2e=comment-at-user')
                 id_box = id_list_box.ele('tag:span@data-e2e=comment-at-uniqueid', index=user_id_index + 1)
@@ -472,82 +462,84 @@ def commentAreaAt(page_comment: Union[ChromiumPage, ChromiumTab], comment_user_i
         else:
             return '//////.......'
 
-    videoUrl_list = ["https://www.tiktok.com/@wuhankgaudw/video/7352361561832377642",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7352141368271047978",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7327506954903948575",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7324876053237796127",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7323011907542158622",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7322718720193776927",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7322635449321753887",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7320143431563611422",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7320055183377976618",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7320054669710052654",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7320053666763951406",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7320052976784215342",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7320052248829119786",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7319769114392743199",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7319683281941810462",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7319384733329198366",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7316784758216805663",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7316704487048006943",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7316418916568403230",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7316361612728814879",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7315673436993375519",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7315609906072046878",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7315227351170796830",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7314948490969304350",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7314491195365887262",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7314109903113587998",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7313829725103770910",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7313739269741317407",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7313105634357038367",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7313075519967284511",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7312998306626538783",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7312740410651184415",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7312727649032473887",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7312701521504800031",
-                     "https://www.tiktok.com/@wuhankgaudw/video/7312372622275153183"]
-
+    with open('utils/keyword/tk_comment_url.txt') as f:
+        videoUrl_list = f.read().splitlines()
     page_comment.get(random.choice(videoUrl_list))
+    # page_comment.get('https://www.tiktok.com/@wuhankgaudw/video/7355304666814614827')
 
     # 滑块验证
     if not my_utils.validation(page_comment, comment_user_id):
-        logger.info(f'{comment_user_id}滑块验证失败，请检查原因')
-        return False, 'error'
+        logger.error(f'{comment_user_id}滑块验证失败，请检查原因')
+        return False
 
     title = page_comment.ele('tag:div@class=DraftEditor-root')
 
-    file_path = f'./split/split_{file_index}.txt'
+    split_len = len(os.listdir('split')) - 2
+    file_path = f'./split/split_{random.randint(1, split_len)}.txt'
     try:
         with open(file_path, 'r', encoding='utf8') as comment_f:
-            lines = [line.strip() for line in comment_f.readlines()]
+            temp_lines = [line.strip() for line in comment_f.readlines()]
     except:
         logger.error(f'{comment_user_id},用户id文件已用完，请添加新文件后再运行')
-        return False, '123'
+        return False
+    with open('utils/keyword/at_words.txt', 'r', encoding='utf8') as comment_f:
+        keywords = comment_f.read().splitlines()
+
+    # 从原始列表中抽取九个用户名
+    lines = random.sample(temp_lines, 35)
 
     at_box = page_comment.ele('tag:div@data-e2e=comment-at-icon', timeout=10).ele('tag:svg')
     if at_box:
         page_comment.scroll.to_see(at_box)
     else:
         logger.error(f'{comment_user_id}可能出现网络问题，请检查错误原因')
-        return False, 'network_error'
+        return False
 
     logger.info(f'{comment_user_id}开始输入评论')
 
     ac = Actions(page_comment)
-    temp_click_box = page_comment.ele('tag:p@class:PCommentTitle')
-    comment_input_count = 1
-    for once_comment in [lines[i:i + 2] for i in range(0, len(lines), 2)][:3]:
-        title.input('Gucci&LV&Chanel')
-        ac.type(' starting from $19').click(temp_click_box)
-        title.input('', clear=False)
 
-        # page_comment.ele('tag:div@data-e2e=comment-at-icon').click()
-        timeout_count = 0
+    page_comment.wait(2, 3)
+    temp_click_box_Coordinates = page_comment.ele('tag:div@class:DivCommentContainer').rect.screen_location
+    if not temp_click_box_Coordinates:
+        full_box = page_comment.ele('#ZoomIn_path-1-inside-1')
+        if full_box:
+            ac.move_to(full_box).click()
+            page_comment.wait(2, 3)
+    comment_input_count = 1
+
+    # 每次评论@多少人
+    once_comment_people = 4
+    # 一共评论多少次
+    comment_number = random.randint(1, 3)
+    # return
+    for once_comment in [lines[i:i + once_comment_people] for i in range(0, len(lines), once_comment_people)][
+                        :comment_number]:
+        recommend = random.choice(keywords)
+        left_words = recommend[:20]
+        right_words = recommend[20:]
+        title = page_comment.ele('tag:div@class=DraftEditor-root')
+        title.input(left_words)
+
+        # post_box = page_comment.ele('tag:div@data-e2e=comment-post')
+        # ac.move_to(post_box).click()
+        ac.type(right_words)
+        emoji_box = page_comment.ele('tag:div@data-e2e=comment-emoji-icon')
+        # emoji_box.click()
+        # page_comment.wait(0.5, 1)
+        # emoji_box.click()
+        ac.move_to(emoji_box).click().click().left(100)
+        page_comment.wait(0.5, 1)
+        # ac.move_to(emoji_click).click()
+
+        logger.info(f'{comment_user_id}准备开始评论区@流程')
         for comment in once_comment:
+            timeout_count = 0
             for _ in range(2):
+                # title.input('@',clear=False)
                 ac.type('@').type(comment)
-                at_all_box = page_comment.wait.ele_loaded('tag:div@data-e2e=comment-at-user', timeout=10)
+                page_comment.wait(2, 3.5)
+                at_all_box = page_comment.wait.ele_loaded('tag:div@data-e2e=comment-at-user', timeout=10).s_ele()
                 # break
                 if at_all_box:
                     at_box_list = at_all_box.eles('tag:span@data-e2e=comment-at-uniqueid', timeout=10)
@@ -555,14 +547,17 @@ def commentAreaAt(page_comment: Union[ChromiumPage, ChromiumTab], comment_user_i
                     at_box_list = []
 
                 user_id_index = 0
+                if not at_box_list:
+                    timeout_count += 1
+                    continue
+
                 for box in at_box_list:
                     temp = get_string_between_tags(box.html)
                     if temp == comment:
                         break
                     user_id_index += 1
 
-                if user_id_index == len(at_box_list):
-                    # logger.info(f'{user_id_index}----{len(id_text_list)}')
+                if user_id_index == len(at_box_list) and timeout_count == 0:
                     timeout_count += 1
                     try:
                         ac.type((Keys.CTRL, 'z'))
@@ -572,24 +567,35 @@ def commentAreaAt(page_comment: Union[ChromiumPage, ChromiumTab], comment_user_i
                         ac.type((Keys.CTRL, 'z'))
                     page_comment.wait(1, 3)
                     continue
+                elif timeout_count != 0:
+                    page_comment.wait(0.3, 1)
+                    id_list_box = page_comment.ele('tag:div@data-e2e=comment-at-user')
+                    id_box = id_list_box.ele('tag:span@data-e2e=comment-at-uniqueid', index=1)
+                    ac.move_to(id_list_box).scroll(on_ele=id_box).click()
+                    break
 
-                ac.move_to(at_all_box).scroll(on_ele=at_box_list[user_id_index])
-                logger.info(f'{comment_user_id} 当前用户id{comment} 用户id{at_box_list[user_id_index].text}')
-                at_box_list[user_id_index].click()
+                page_comment.wait(0.3, 1)
+                id_list_box = page_comment.ele('tag:div@data-e2e=comment-at-user')
+                id_box = id_list_box.ele('tag:span@data-e2e=comment-at-uniqueid', index=user_id_index + 1)
+                ac.move_to(id_list_box).scroll(on_ele=id_box).click()
+                # logger.info(f'{comment_user_id} 当前用户id{comment} 用户id{at_box_list[user_id_index].text}')
                 break
-            if timeout_count == 3:
+            if timeout_count == 2:
                 logger.info(f'{comment_user_id} {comment}此用户id无法找到')
-            page_comment.wait(0.5, 1.5)
+
         logger.info(f'{comment_user_id}单次评论输入成功')
-        page_comment.ele('tag:div@data-e2e=comment-post').click()
+        # 点击发送评论
+        post_box = page_comment.ele('tag:div@data-e2e=comment-post')
+        ac.move_to(post_box).click()
         logger.info(f'{comment_user_id}已完成第{comment_input_count}次输入，开始发送评论')
         page_comment.wait(1, 2)
         comment_input_count += 1
+        page_comment.wait(2, 3)
 
     page_comment.get('https://www.tiktok.com/foryou')
     logger.info(f'{comment_user_id}评论区@完成正在回到首页')
 
-    return True, '1414'
+    return True
 
 
 def resetTabBar(page_reset: Union[ChromiumPage, ChromiumTab]):
@@ -601,6 +607,8 @@ def resetTabBar(page_reset: Union[ChromiumPage, ChromiumTab]):
 
 def collecting_userFans(page_coll_userFans: Union[ChromiumPage, ChromiumTab], coll_fans_user_id,
                         user_url, stop_event: threading.Event):
+    if 'https://' not in user_url:
+        user_url = f'https://www.tiktok.com/@{user_url}'
     page_coll_userFans.get(user_url)
     page_coll_userFans.wait(10, 15)
 
@@ -612,18 +620,53 @@ def collecting_userFans(page_coll_userFans: Union[ChromiumPage, ChromiumTab], co
     logger.info(fan_box.text)
     ac.move_to(fan_box)
 
-    logger.info(f'{coll_fans_user_id}开始滚动用户列表')
+    logger.info(f'{coll_fans_user_id}开始滚动粉丝列表')
     scroll_count = 1
     while not stop_event.is_set():
-        ac.scroll(0, 1000)
+        ac.scroll(0, 1500)
         logger.info(f'{coll_fans_user_id}正在进行第{scroll_count}次滚动')
         scroll_count += 1
-        page_coll_userFans.wait(3, 4)
-        if scroll_count == 120:
-            stop_event.set()
-            break
+        page_coll_userFans.wait(0.5, 1.2)
 
     pass
+
+
+def collecting_self_comment(page_get_self_comments: Union[ChromiumPage, ChromiumTab], getGroup_userId,
+                            stop_event: threading.Event):
+    # page_get_self_comments.get(user_url)
+    page_get_self_comments.wait(2)
+
+    page_get_self_comments.ele('@class:StyledInboxIcon', timeout=5).click()
+    page_get_self_comments.ele('@data-e2e=comments', timeout=5).click()
+
+    comments_box = page_get_self_comments.ele('@data-e2e=inbox-list', timeout=5)
+    ac = Actions(page_get_self_comments)
+    # fan_box = fans_box.eles('tag:span@class:SpanNickname', timeout=5)[0]
+    # logger.info(fan_box.text)
+    ac.move_to(comments_box)
+
+    logger.info(f'{getGroup_userId}开始滚动评论列表')
+    scroll_count = 1
+    while not stop_event.is_set():
+        ac.scroll(0, 1200)
+        logger.info(f'{getGroup_userId}正在进行第{scroll_count}次滚动')
+        scroll_count += 1
+        page_get_self_comments.wait(0.5, 1.1)
+        # if scroll_count == 120:
+        #     stop_event.set()
+        #     break
+
+
+def get_self_name(page_get_self_name: Union[ChromiumPage, ChromiumTab], user_id_selfName):
+    try:
+        page_get_self_name.ele('tag:span@@text()=Profile', timeout=10).click()
+    except:
+        logger.info(f'{user_id_selfName},账号登陆失败')
+        page_get_self_name.quit()
+    page_get_self_name.wait(3, 5)
+    real_name = page_get_self_name.url.split('com/@')[1]
+    logger.debug(f'{user_id_selfName}当前帐号id为 {real_name}')
+    return True
 
 
 # 222 229 228 234 236 235 248 246 250 258 218 211

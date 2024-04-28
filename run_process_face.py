@@ -5,6 +5,7 @@ import msvcrt
 import multiprocessing
 import os
 import random
+import threading
 import time
 
 import pandas as pd
@@ -38,7 +39,7 @@ class Run:
             'Content-Type': 'application/json',
             'Accept': 'application/json'
         }
-        self.finger_url = 'http://local.adspower.com:50325'
+        self.finger_url = 'http://127.0.0.1:50325'
 
     # 根据对应user_id打开对应窗口
     def start_userID(self, user_id):
@@ -63,11 +64,12 @@ class Run:
         chrome_option.add_experimental_option("debuggerAddress", selenium_address)  # 这行命令必须加上，才能启动指纹浏览器
 
         driver = webdriver.Chrome(service=service, options=chrome_option)
+
         # driver.maximize_window()
         page = from_selenium(driver)
-        close_tab = page.get_tab(url='https://start.adspower.net/')
-        if close_tab:
-            close_tab.close()
+        while page.tabs_count != 1:
+            tab = page.get_tab(id_or_num=2)
+            tab.close()
         page.set.window.max()
         page.set.window.mini()
 
@@ -79,17 +81,17 @@ class Run:
 r = Run()
 
 
-def saveCompleteId(user_id_save, platformType, save_index):
+def saveCompleteId(user_id_save, platformType, save_index=None):
     # 打开文件并获取锁
     with open(f'./txt_path/{platformType}_complete_id.txt', 'a') as file:
         msvcrt.locking(file.fileno(), msvcrt.LK_LOCK, 1)  # 获取锁
         file.write(f"{user_id_save}\n")
         msvcrt.locking(file.fileno(), msvcrt.LK_UNLCK, 1)  # 释放锁
 
-    with open(f'./txt_path/init_repeat.txt', 'a') as file:
-        msvcrt.locking(file.fileno(), msvcrt.LK_LOCK, 1)  # 获取锁
-        file.write(f"{save_index}\n")
-        msvcrt.locking(file.fileno(), msvcrt.LK_UNLCK, 1)  # 释放锁
+    # with open(f'./txt_path/init_repeat.txt', 'a') as file:
+    #     msvcrt.locking(file.fileno(), msvcrt.LK_LOCK, 1)  # 获取锁
+    #     file.write(f"{save_index}\n")
+    #     msvcrt.locking(file.fileno(), msvcrt.LK_UNLCK, 1)  # 释放锁
 
 
 def operate_facebook(browser_id_op, model, temp_index, add_index, op_platformType):
@@ -124,31 +126,37 @@ def operate_facebook(browser_id_op, model, temp_index, add_index, op_platformTyp
     ac.click()
     page.wait(1, 3)
 
-    # logger.info(page.url)
+    # logger.info(page_count.url)
+    event = threading.Event()
     flag = False
     if model == 'login_init':
         flag = facebook_caption.face_init(page, account_list['email'][temp_index - 1],
                                           account_list['password'][temp_index - 1],
                                           account_list['2fa'][temp_index - 1], user_id)
     elif model == 'brushPost':
-        # flag = facebook_caption.brushPost(page, user_id)
-        try:
-            flag = facebook_caption.brushPost(page, user_id)
-        except Exception as e:
-            logger.error(e)
-            page.wait(5, 10)
-            flag = False
+        flag = facebook_caption.brushPost(page_brushPost=page, post_user_id=user_id, valid_event=event)
+        page.wait(5, 10)
     elif model == 'joinGroup':
         url = 'https://www.facebook.com/groups/olbeca/'
         flag = facebook_caption.joinAGroup(page, user_id, url)
     else:
         flag = False
-        # page.wait(15, 20)
+    send_data = {
+        'run_browser_list': [browser_id_op]
+    }
     if flag:
-        saveCompleteId(browser_id_op, op_platformType, temp_index - 1)
+        send_data['tag'] = 'success'
+        saveCompleteId(browser_id_op, op_platformType)
         logger.info(f'{browser_id_op}已完成操作')
     else:
-        logger.info(f'{browser_id_op}有异常情况，发生中断')
+        send_data['tag'] = 'error'
+        logger.error(f'{browser_id_op}有异常情况，发生中断')
+    requests.post(url=f'http://fbmessage.v7.idcfengye.com/changeTag', json=send_data)
+    # if flag:
+    #     saveCompleteId(browser_id_op, op_platformType, temp_index - 1)
+    #     logger.info(f'{browser_id_op}已完成操作')
+    # else:
+    #     logger.info(f'{browser_id_op}有异常情况，发生中断')
     page.quit()
 
 
@@ -229,6 +237,11 @@ def run2(op_i, platformType_run, maxProcesses):
             current_browser_id_list = random.sample(browser_id_set, maxProcesses)
         except ValueError:
             current_browser_id_list = list(browser_id_set)
+        send_data = {
+            'run_browser_list': current_browser_id_list,
+            'tag': 'running'
+        }
+        requests.post(url=f'http://fbmessage.v7.idcfengye.com/changeTag', json=send_data)
         start_many_process_face(current_browser_id_list, model_list_run2[operate_index_run], cycle_count,
                                 complete_browser_length, platformType_run)
         cycle_count += 1
@@ -243,7 +256,7 @@ def run2(op_i, platformType_run, maxProcesses):
     #     pool.join()
 
     logger.info('操作已全部完成')
-    reset_complete_txt(platformType_run)
+    # reset_complete_txt(platformType_run)
 
 
 if __name__ == "__main__":
