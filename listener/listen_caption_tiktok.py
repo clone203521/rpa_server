@@ -79,7 +79,7 @@ def test():
     return True
 
 
-def get_self_comments(page_get_self_comments, getGroup_userId, user_url):
+def get_self_comments(page_get_self_comments, getGroup_userId):
     functions = [tiktok_caption.collecting_self_comment, listener_All.listen_self_comment]
     threads = []
     # 导入线程函数后创建一个事件对象

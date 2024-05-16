@@ -123,23 +123,19 @@ def operate_facebook_listener(browser_id_op, model, temp_index, add_index, op_pl
     logger.info(f'{browser_id_op}   {model}')
     temp_index += add_index
 
+    page.get('https://www.tiktok.com')
+
     #
     logger.info(f'当前是第{temp_index}台浏览器')
 
     # logger.info(page_count.url)
     flag = False
-    if model == 'get_group_info':
-        group_keyword = ['Louis Vuitton', 'Gucci', 'Chanel', 'Prada', 'Hermès', 'Dior', 'Burberry', 'Fendi',
-                         'Saint Laurent', 'Balenciaga', 'Givenchy', 'Bottega Veneta', 'Valentino', 'Celine',
-                         'Alexander McQueen']
-        if temp_index - 1 > len(group_keyword):
-            flag = False
-        else:
-            flag = listen_caption_facebook.get_group_info(page, browser_id_op, group_keyword[temp_index - 1])
-    elif model == 'get_user_fans':
+    if model == 'get_user_fans':
         user_url = ["influencedqueens", "babyfacevon0", "isabxlla.x",
                     "danielleathena", "sugarartistkoko", "gayleboggs", "kayleeelauren"]
         flag = listen_caption_tiktok.get_userFans(page, browser_id_op, user_url[temp_index - 1])
+    elif model == 'get_self_comments':
+        flag = listen_caption_tiktok.get_self_comments(page, browser_id_op)
 
     # if flag:
     #     saveCompleteId(browser_id_op, op_platformType)
@@ -211,7 +207,7 @@ def exportIncompleteBrowserNumber():
 
 @reset_file
 def run(op_i, platformType_run, run_maxProcesses):
-    model_list_run = ['get_user_fans']
+    model_list_run = ['get_user_fans', 'get_self_comments']
     operate_index_run = op_i
 
     with open(f'txt_path/{platformType_run}_browser_id.txt', 'r', encoding='utf8') as f_1:
@@ -256,7 +252,7 @@ def run(op_i, platformType_run, run_maxProcesses):
 
 
 if __name__ == "__main__":
-    model_list = ['get_user_fans']
+    model_list = ['get_user_fans', 'get_self_comments']
     # 选择浏览器id文件
     platformType = 'listen_tiktok'
 

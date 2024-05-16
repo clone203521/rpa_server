@@ -28,8 +28,9 @@ current_data = datetime.datetime.now().strftime("%Y-%m-%d")
 os.makedirs(f'{LOG_PATH}/{current_data}', exist_ok=True)
 logger.add(f'{LOG_PATH}/{current_data}/{formatted_time}.log', format="{time} {level} {message}", level="INFO")
 
-# group_list = pd.read_csv('facebook_group/group_info/00group_csv/group_info.csv', encoding='utf8')
-group_list = pd.read_csv('facebook_group/group_info/00group_csv/group_info_final20.csv')
+# group_list = pd.read_csv('facebook_group/message_group_csv/group_info.csv', encoding='utf8')
+group_list_temp = pd.read_csv('facebook_group/group_csv/group_info_05-11_filter.csv')
+group_list = group_list_temp['group_url'].tolist()
 
 
 class Run:
@@ -88,6 +89,7 @@ def saveCompleteId(user_id_save, save_platformType):
         msvcrt.locking(file.fileno(), msvcrt.LK_LOCK, 1)  # 获取锁
         file.write(f"{user_id_save}\n")
         msvcrt.locking(file.fileno(), msvcrt.LK_UNLCK, 1)  # 释放锁
+        file.close()
 
 
 def saveCurrentBrower(user_id_save):
@@ -99,10 +101,29 @@ def saveCurrentBrower(user_id_save):
 
 
 # group_add = 0
+with open('static/keyword/face_group_keyword.txt', 'r') as file:
+    group_keywords = file.read().splitlines()
 
 
 # 将user_id存入任务队列中
-def operate_facebook_listener(browser_id_op, model, temp_index, add_index, op_platformType, op_length):
+def operate_facebook_listener(browser_id_op, model, temp_index, add_index, op_platformType, start_group_index):
+    def get_group_keyword_info(current_keyword_index, keyword_type):
+        send_data = {
+            'data': {
+                'pageNum': current_keyword_index,
+                'pageSize': 1,
+                'send_type': keyword_type,
+                'send_keyword': '',
+            },
+        }
+        response = requests.post('http://fbmessage.v7.idcfengye.com/get_keywords', json=send_data)
+        result = response.json()
+
+        if current_keyword_index > result['total']:
+            return False
+
+        return result['list'][0]['keyword']
+
     selenium_webdriver, selenium_address, user_id = None, None, None
     for _ in range(3):
         try:
@@ -135,33 +156,30 @@ def operate_facebook_listener(browser_id_op, model, temp_index, add_index, op_pl
     # page.wait(1, 3)
     # ac.click()
     page.wait(1, 3)
-    global group_add
     valid_event = threading.Event()
+    group_add = 41
     if model == 'get_group_info':
-        group_keyword = ['Travel', 'Tour', 'Health', 'Cleaning', 'Sewing', 'Hair', 'Skin', 'Makeup', 'Make-up',
-                         'Jewelry', 'Remedies', 'Pregnancy', 'Beauty', 'Weight loss', 'Fitness', 'Baking', 'Self-care',
-                         'Mother', 'Baby']
-        if temp_index - 1 + 6 >= len(group_keyword):
+        # group_keyword = ['Travel', 'Tour', 'Health', 'Cleaning', 'Sewing', 'Hair', 'Skin', 'Makeup', 'Make-up',
+        #                  'Jewelry', 'Remedies', 'Pregnancy', 'Beauty', 'Weight loss', 'Fitness', 'Baking', 'Self-care',
+        #                  'Mother', 'Baby']
+        current_group_keyword = get_group_keyword_info(temp_index, 'face_group')
+        if not current_group_keyword:
             flag = False
-            logger.info('关键词用尽')
+            logger.warning('关键词用尽')
         else:
-            keyword = group_keyword[temp_index - 1 + 6]
             flag = listen_caption_facebook.get_group_info(getGroup_userId=browser_id_op,
-                                                          keyword=keyword,
+                                                          keyword=current_group_keyword,
                                                           valid_event=valid_event, page_get_groupId=page)
     elif model == 'get_group_userId':
-        temp_add = 0
         flag = listen_caption_facebook.get_group_userId(page_get_groupUserId=page,
                                                         getGroupUser_userId=browser_id_op,
-                                                        group_id=group_list['group_url'][
-                                                            temp_index - 1 + temp_add],
+                                                        group_id=group_list[start_group_index - 1],
                                                         valid_event=valid_event)
     elif model == 'listen_group_comment':
-        logger.warning(f'{browser_id_op}当前小组链接: {group_list["group_url"][temp_index - 1]}')
+        logger.warning(f'{browser_id_op}当前小组链接: {group_list[temp_index - 1]}')
 
         flag = listen_caption_facebook.monitoring_Team_Comments(getGroupUser_userId=browser_id_op,
-                                                                group_url=group_list['group_url'][
-                                                                    temp_index - 1],
+                                                                group_url=group_list[temp_index - 1],
                                                                 page_get_groupUserId=page, valid_event=valid_event)
     send_data = {
         'run_browser_list': [browser_id_op]
@@ -177,39 +195,33 @@ def operate_facebook_listener(browser_id_op, model, temp_index, add_index, op_pl
     page.quit()
 
 
-def start_many_process(browsers, model, cycle_index, complete_browser_length, start_platformType, start_length):
+def start_many_process(browsers, model, cycle_index, complete_browser_length, start_platformType, start_group_index):
     # 启动多个进程来操作多个浏览器
     processes = []
     count = 1
-    with open(f'txt_path/group_start_index.txt', 'r') as file:
-        try:
-            start_group_add = int(file.read())
-        except ValueError:
-            with open(f'txt_path/group_start_index.txt', 'w') as file_1:
-                file_1.write('1')
-            start_group_add = 1
+    # with open('static/keyword/face_group_start.txt', 'r') as file:
+    #     group_add = int(file.read())
+    #     file.close()
+    # end_start = group_add + len(browsers)
+    # if end_start > len(group_list):
+    #     group_add = 1
 
-    if start_group_add + len(browsers) > len(group_list):
-        start_group_add = 0
-        with open(f'txt_path/group_start_index.txt', 'w') as file:
-            file.write(str(start_group_add))
-    start_length = start_group_add
-    for browsers_id in browsers:
+    for index, browsers_id in enumerate(browsers):
         temp = (cycle_index - 1) * len(browsers) + count
         process = multiprocessing.Process(target=operate_facebook_listener,
                                           args=(browsers_id, model, temp, complete_browser_length, start_platformType,
-                                                start_length))
+                                                start_group_index + temp - 1))
         processes.append(process)
         process.start()
         count += 1
         time.sleep(5)
-
+    #
+    with open('static/keyword/face_group_start.txt', 'w') as file_end:
+        file_end.write(str(start_group_index + len(browsers)))
+        file_end.close()
     # 等待所有进程完成
     for process in processes:
         process.join()
-    start_group_add += len(browsers)
-    with (open(f'txt_path/group_start_index.txt', 'w') as file_2):
-        file_2.write(str(start_group_add))
 
 
 def reset_complete_txt(del_platformType_run):
@@ -242,8 +254,17 @@ def exportIncompleteBrowserNumber():
 
 @reset_file
 def run(op_i: int, platformType_run: str, maxProcesses: int, run_length: int = 0):
+    def get_start_group():
+        with open('static/keyword/face_group_start.txt', 'r', encoding='utf8') as f:
+            start_number = int(f.read())
+        return start_number
+
     model_list_run = ['get_group_info', 'get_group_userId', 'listen_group_comment']
     operate_index_run = op_i
+
+    with (open(f'txt_path/group_start_index.txt', 'w') as file_2):
+        file_2.write(f'1')
+        file_2.close()
 
     # 最大进程数
     with open(f'txt_path/{platformType_run}_browser_id.txt', 'r', encoding='utf8') as f_1:
@@ -253,6 +274,7 @@ def run(op_i: int, platformType_run: str, maxProcesses: int, run_length: int = 0
             complete_browser_id_set = set(line.strip() for line in f_2.readlines())
     except FileNotFoundError:
         with open(f'txt_path/{platformType_run}_complete_id.txt', 'w', encoding='utf8') as f_2:
+            f_2.write('')
             complete_browser_id_set = set()
         logger.info(f'txt_path/{platformType_run}_complete_id.txt 文件已创建')
 
@@ -263,6 +285,7 @@ def run(op_i: int, platformType_run: str, maxProcesses: int, run_length: int = 0
     numberCycles = math.ceil(len(browser_id_set) / maxProcesses)
 
     cycle_count = 1
+    start_group_index = get_start_group()
     for count_i in range(numberCycles):
         # 随机选取N个浏览器 N = numberOfProcesses
         try:
@@ -275,10 +298,13 @@ def run(op_i: int, platformType_run: str, maxProcesses: int, run_length: int = 0
         }
         requests.post(url=f'http://fbmessage.v7.idcfengye.com/changeTag', json=send_data)
         start_many_process(current_browser_id_list, model_list_run[operate_index_run], cycle_count,
-                           complete_browser_length, platformType_run, run_length)
+                           complete_browser_length, platformType_run, start_group_index)
         cycle_count += 1
         for repeat_i in current_browser_id_list:
             browser_id_set.remove(repeat_i)
+        start_group_index += maxProcesses
+        if start_group_index >= len(group_list):
+            start_group_index = 1
     # 线程池
     # with multiprocessing.Pool(processes=run_maxProcesses) as pool:  # 创建一个包含maxProcesses个进程的进程池
     #     for browser in browser_id_set:

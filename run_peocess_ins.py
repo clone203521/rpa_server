@@ -97,6 +97,23 @@ def saveCurrentBrower(user_id_save):
 
 # 将user_id存入任务队列中
 def operate_facebook_listener(browser_id_op, model, temp_index, add_index, op_platformType, user_start_index):
+    def get_group_keyword_info(current_keyword_index, keyword_type):
+        send_data = {
+            'data': {
+                'pageNum': current_keyword_index,
+                'pageSize': 1,
+                'send_type': keyword_type,
+                'send_keyword': '',
+            },
+        }
+        response = requests.post('http://fbmessage.v7.idcfengye.com/get_keywords', json=send_data)
+        result = response.json()
+
+        if current_keyword_index > result['total']:
+            return False
+
+        return result['list'][0]['keyword']
+
     selenium_webdriver, selenium_address, user_id = None, None, None
     for _ in range(3):
         try:
@@ -123,10 +140,11 @@ def operate_facebook_listener(browser_id_op, model, temp_index, add_index, op_pl
         page.get('https://www.instagram.com/')
         page.wait(10, 20)
 
-    if model == 'get_user_info':
-        pass
+    if model == 'get_user_data':
+        keyword = get_group_keyword_info(temp_index,'ins_search')
+        listen_ins.get_user_data(page, user_id, keyword)
     elif model == 'get_user_fans':
-        flag=listen_ins.get_user_fans(page, user_id, user_fans_list[user_start_index])
+        flag = listen_ins.get_user_fans(page, user_id, user_fans_list[user_start_index])
 
     if flag:
         saveCompleteId(browser_id_op, op_platformType)
@@ -140,13 +158,13 @@ def start_many_process(browsers, model, cycle_index, complete_browser_length, st
     # 启动多个进程来操作多个浏览器
     processes = []
     count = 0
-    with open('utils/keyword/ins_fans_start.txt', 'r') as f:
+    with open('static/keyword/ins_fans_start.txt', 'r') as f:
         start_index = int(f.read())
     if start_index + len(browsers) > len(user_fans_list):
         start_index = 1
     for browsers_id in browsers:
         temp = (cycle_index - 1) * len(browsers) + count + 1
-        start_index = start_index + count - 1
+        start_index += count - 1
         process = multiprocessing.Process(target=operate_facebook_listener,
                                           args=(browsers_id, model, temp, complete_browser_length,
                                                 start_platformType, start_index,))
@@ -159,7 +177,7 @@ def start_many_process(browsers, model, cycle_index, complete_browser_length, st
     for process in processes:
         process.join()
 
-    with open('utils/keyword/ins_fans_start.txt', 'w') as f:
+    with open('static/keyword/ins_fans_start.txt', 'w') as f:
         f.write(f'{start_index}')
 
 

@@ -133,7 +133,7 @@ def operate_google(browser_id_op, model, temp_index, op_platformType):
     logger.debug(f'{user_id}当前是第{temp_index}台浏览器')
     page = r.start_selenium(selenium_webdriver, selenium_address, user_id)
     logger.info(f'{browser_id_op}   {model}')
-    with open('utils/keyword/search_keyword.txt', 'r') as file:
+    with open('static/keyword/search_keyword.txt', 'r') as file:
         keywords = file.read().splitlines()
     if model == 'search_tel':
         cap_google.search_tel(page, browser_id_op, site_urls[temp_index - 1], random.choice(keywords))
@@ -212,7 +212,7 @@ def run(op_i, platformType_run, maxProcesses):
     # for count_i in range(numberCycles):
     #     # 随机选取N个浏览器 N = numberOfProcesses
     #     try:
-    #         current_browser_id_list = random.choices(list(browser_id_set), k=maxProcesses)
+    #         current_browser_id_list = random.sample(list(browser_id_set), k=maxProcesses)
     #     except ValueError:
     #         current_browser_id_list = list(browser_id_set)
     #     start_many_process(current_browser_id_list, model_list[operate_index_run],

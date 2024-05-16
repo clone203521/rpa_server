@@ -172,7 +172,7 @@ def send_message(page_send_message: Union[ChromiumPage, ChromiumTab], user_id_me
         # https://linktr.ee/olbeca02
         # https://sbf.quanwangtui.com/mycard/MjiAfma
         input_box.input(
-            '''🌸 Thank you for your interest! 🛍️ We're thrilled to announce our Mother's Day celebration with a fantastic 40% discount on all Gucci, LV, Chanel, Prada bags and more! 🎉 As a professional Chinese factory, we specialize in providing 1:1 quality replicas of these luxurious brands, with free shipping worldwide! 🌍✨ If you're interested in upgrading your collection or surprising a loved one, feel free to add me on WhatsApp at https://linktr.ee/olbeca02 for more details and personalized assistance. 📲💼 Hurry, this offer won't last forever! 🎁 #MothersDaySale #LuxuryReplica''')
+            '''🌸 Thank you for your interest! 🛍️ We're thrilled to announce our Mother's Day celebration with a fantastic 40% discount on all Gucci, LV, Chanel, Prada bags and more! 🎉 As a professional Chinese factory, we specialize in providing 1:1 quality replicas of these luxurious brands, with free shipping worldwide! 🌍✨ If you're interested in upgrading your collection or surprising a loved one, feel free to add me on WhatsApp at https://www.olbeca.com for more details and personalized assistance. 📲💼 Hurry, this offer won't last forever! 🎁 #MothersDaySale #LuxuryReplica''')
         page_send_message.ele('@aria-label=按 Enter 键发送').click()
     except Exception as e:
         logger.error(e)

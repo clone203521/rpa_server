@@ -195,7 +195,7 @@ def brushPost(page_brushPost: Union[ChromiumPage, ChromiumTab], post_user_id, va
             current_post = page_brushPost.ele(f'tag:div@role=article', index=current_index)
             logger.info(f'{post_user_id}正在主页观看文章，当前观看了{current_index}篇文章')
             page_brushPost.scroll.to_see(current_post, center=True)
-            ac.move_to(current_post, duration=3.5)
+            ac.move_to(current_post)
 
             # 获取当前元素的静态版本，提升效率
             s_current_ele = current_post.s_ele()
@@ -455,7 +455,11 @@ def collecting_groupId(page_collect: Union[ChromiumPage, ChromiumTab], searchGro
     page_collect.get('https://www.facebook.com/groups/feed/')
     page_collect.wait(10, 15)
     group_input_box = page_collect.ele('tag:input@aria-autocomplete=list', index=2, timeout=10)
-    group_input_box.input((f'Tips+{group_key}', Keys.ENTER))
+    if not group_input_box:
+        page_collect.wait(15, 20)
+        logger.debug(f'{searchGroup_user_id}没有找到输入框，请检查原因')
+        return False
+    group_input_box.input((f'{group_key}', Keys.ENTER))
     logger.info(f'{searchGroup_user_id}正在搜索小组')
     page_collect.wait(10, 15)
     logger.info(f'{searchGroup_user_id}开始滚动屏幕')
@@ -463,7 +467,7 @@ def collecting_groupId(page_collect: Union[ChromiumPage, ChromiumTab], searchGro
     count = 1
     while not stop_event.is_set():
         page_collect.scroll.down(800)
-        page_collect.wait(2,4)
+        page_collect.wait(2, 4)
         count += 1
         logger.info(f'{searchGroup_user_id}滚动第{count}次')
 
@@ -532,9 +536,16 @@ def fa2_test():
 
     while True:
         fa2_code = input("请输入2FA验证码: ")
-        fa_2 = get_faTwo_code(fa2_code)
+        fa_2 = get_faTwo_code(fa2_code.replace(' ', ''))
         print(fa_2)
 
 
+def xxxx():
+    x = 1 + 1
+    logger.info('飒飒飞机卡号法律框架撒娇了')
+
+
 if __name__ == '__main__':
+    xxxx()
+
     fa2_test()

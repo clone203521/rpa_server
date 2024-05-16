@@ -318,7 +318,7 @@ def commentAreaAt_low(page_comment: Union[ChromiumPage, ChromiumTab], comment_us
         else:
             return '//////.......'
 
-    with open('utils/keyword/tk_comment_url.txt') as f:
+    with open('static/keyword/tk_comment_url.txt') as f:
         videoUrl_list = f.read().splitlines()
 
     page_comment.get(random.choice(videoUrl_list))
@@ -339,7 +339,7 @@ def commentAreaAt_low(page_comment: Union[ChromiumPage, ChromiumTab], comment_us
     except:
         logger.error(f'{comment_user_id},用户id文件已用完，请添加新文件后再运行')
         return False
-    with open('utils/keyword/at_words.txt', 'r', encoding='utf8') as comment_f:
+    with open('static/keyword/at_words.txt', 'r', encoding='utf8') as comment_f:
         keywords = comment_f.read().splitlines()
     # 从原始列表中抽取九个用户名
     lines = random.sample(temp_lines, 35)
@@ -462,7 +462,7 @@ def commentAreaAt(page_comment: Union[ChromiumPage, ChromiumTab], comment_user_i
         else:
             return '//////.......'
 
-    with open('utils/keyword/tk_comment_url.txt') as f:
+    with open('static/keyword/tk_comment_url.txt') as f:
         videoUrl_list = f.read().splitlines()
     page_comment.get(random.choice(videoUrl_list))
     # page_comment.get('https://www.tiktok.com/@wuhankgaudw/video/7355304666814614827')
@@ -482,7 +482,7 @@ def commentAreaAt(page_comment: Union[ChromiumPage, ChromiumTab], comment_user_i
     except:
         logger.error(f'{comment_user_id},用户id文件已用完，请添加新文件后再运行')
         return False
-    with open('utils/keyword/at_words.txt', 'r', encoding='utf8') as comment_f:
+    with open('static/keyword/at_words.txt', 'r', encoding='utf8') as comment_f:
         keywords = comment_f.read().splitlines()
 
     # 从原始列表中抽取九个用户名

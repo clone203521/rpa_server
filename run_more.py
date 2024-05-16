@@ -1,3 +1,6 @@
+import random
+from datetime import datetime
+
 import listener_facebook_process as run_listen_face
 import run_process as run_tk
 import run_process_face as run_face
@@ -7,6 +10,7 @@ def run_loop(run_count):
     platformType_tk = 'tik_all'
     # platformType_face = 'facebook_4_10'
     face_list = 'facebook_account'
+    face_list = 'none'
 
     flag_y = input('是否重置文件: ')
     if flag_y == 'y' or flag_y == 'Y':
@@ -14,6 +18,9 @@ def run_loop(run_count):
             f.write('')
         with open(f'./txt_path/{face_list}_complete_id.txt', 'w', encoding='utf8') as f:
             f.write('')
+    original_time = datetime.now()
+    current_time = f'{original_time.strftime("%m-%d")}'
+    get_group_flag = False
 
     while True:
         # print('count=', run_count)
@@ -36,7 +43,25 @@ def run_loop(run_count):
         elif 20 <= run_count < 22:
             run_face.run2(1, face_list, 10)
         else:
-            run_tk.run(2, platformType_tk, 12)
+            original_time = datetime.now()
+            temp_time = f'{original_time.strftime("%m-%d")}'
+            if temp_time != current_time:
+                current_time = temp_time
+                get_group_flag = False
+                run_listen_face.run(1, face_list, 10)
+
+            if random.random() < 0.4:
+                run_tk.run(2, platformType_tk, 12)
+            elif random.random() < 0.1:
+                run_listen_face.run(2, face_list, 10)
+            elif random.random() < 0.4:
+                run_face.run2(1, face_list, 10)
+            else:
+                pass
+            with open(f'./txt_path/{platformType_tk}_complete_id.txt', 'w', encoding='utf8') as f:
+                f.write('')
+            with open(f'./txt_path/{face_list}_complete_id.txt', 'w', encoding='utf8') as f:
+                f.write('')
         run_count += 1
 
         if run_count % 2 == 0:
@@ -44,6 +69,11 @@ def run_loop(run_count):
                 f.write('')
             with open(f'./txt_path/{face_list}_complete_id.txt', 'w', encoding='utf8') as f:
                 f.write('')
+
+        if get_group_flag:
+            run_listen_face.run(1, face_list, 10)
+            get_group_flag = False
+            continue
 
 
 if __name__ == '__main__':

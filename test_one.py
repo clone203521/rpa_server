@@ -22,6 +22,8 @@ from selenium.webdriver.chrome.service import Service
 import open_broswer
 import tiktok_caption
 import caption_google
+import listener.listen_caption_tiktok as listen_tk
+
 from utils import my_utils
 from utils.decorator import reset_file
 
@@ -351,11 +353,11 @@ if __name__ == "__main__":
     # platformType = 'tik_all'
     # start_index = 0
     bro_id = 'jfdfae0'
-    bro_id = 'jf9yo4n'
+    # bro_id = 'jf9yo4n'
     #
     page = open_broswer.open_browser(bro_id)
     # page.get('https://www.tiktok.com')
-    # listen_tk.get_self_comments(page, bro_id, '')
+    listen_tk.get_self_comments(page, bro_id)
     # addTo_group(page)
     # caption_google.search_tel_one(page, bro_id, site_urls[1])
     # tiktok_caption.commentAreaAt(page, bro_id, 12)

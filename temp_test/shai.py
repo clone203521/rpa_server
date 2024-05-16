@@ -5,7 +5,7 @@ import pandas as pd
 
 
 def test1():
-    df = pd.read_csv('group_info_4-17.csv')
+    df = pd.read_csv('group_info_05-07.csv')
 
     drop_index = []
     # filtered_strings = []
@@ -60,6 +60,6 @@ def tiqu():
 
 
 if __name__ == '__main__':
-    # test1()
+    test1()
     # excel_test()
-    tiqu()
+    # tiqu()

@@ -2,7 +2,6 @@ import threading
 import time
 from typing import Union
 
-from DrissionPage._functions.keys import Keys
 from DrissionPage._pages.chromium_page import ChromiumPage
 from DrissionPage._pages.chromium_tab import ChromiumTab
 
@@ -54,7 +53,7 @@ def get_group_userId(page_get_groupUserId, getGroupUser_userId, group_id, valid_
         threads.append(thread)
 
     # 使用 threading.Timer 定时器设置超时
-    timer = threading.Timer(60 * 5, stop_event.set)
+    timer = threading.Timer(60 * 20, stop_event.set)
     timer.start()
 
     # 等待所有线程完成

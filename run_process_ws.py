@@ -77,7 +77,7 @@ class Run:
         page = from_selenium(driver)
 
         page.set.window.max()
-        page.set.window.mini()
+        # page.set.window.mini()
         # tab_count = page_count.tabs_count
         while page.tabs_count != 1:
             tab = page.get_tab(id_or_num=2)
@@ -114,11 +114,11 @@ site_urls = ["https://www.facebook.com",
              'https://www.imo.in',
              'https://www.crunchbase.com']
 # 每个号一次采集多少小组
-once_tel = 5
+once_tel = 10
 
 
 # 将user_id存入任务队列中
-def operate_google(browser_id_op, model, temp_index, op_platformType):
+def operate_google(browser_id_op, model, temp_index, op_platformType, start_index_op):
     selenium_webdriver, selenium_address, user_id = None, None, None
     for _ in range(3):
         try:
@@ -136,11 +136,9 @@ def operate_google(browser_id_op, model, temp_index, op_platformType):
     page = r.start_selenium(selenium_webdriver, selenium_address, user_id)
     logger.info(f'{browser_id_op}   {model}')
     flag = False
-    with open('utils/keyword/search_keyword.txt', 'r') as file:
-        keywords = file.read().splitlines()
+
     if model == 'get_group_tel':
-        add_index = 5
-        get_start_index = (temp_index - 1) * once_tel + add_index
+        get_start_index = (temp_index - 1 + start_index_op) * once_tel
         flag = cap_ws.getGroupTel_all(page, group_list[get_start_index:get_start_index + once_tel], browser_id_op)
 
     send_data = {
@@ -157,14 +155,15 @@ def operate_google(browser_id_op, model, temp_index, op_platformType):
     page.quit()
 
 
-def start_many_process(browsers, model, start_platformType):
+def start_many_process(browsers, model, cycle_index, start_platformType, start_index_smp):
     # 启动多个进程来操作多个浏览器
 
     processes = []
     count = 1
     for browsers_id in browsers:
+        temp = (cycle_index - 1) * len(browsers) + count
         process = multiprocessing.Process(target=operate_google,
-                                          args=(browsers_id, model, count, start_platformType))
+                                          args=(browsers_id, model, temp, start_platformType, start_index_smp))
         processes.append(process)
         process.start()
         count += 1
@@ -224,11 +223,16 @@ def run(op_i, platformType_run, maxProcesses):
     browser_id_set = origin_browser_id_set - complete_browser_id_set
 
     numberCycles = math.ceil(len(browser_id_set) / maxProcesses)
+    with open('static/keyword/ws_group_start.txt', 'r') as f:
+        start_index_run = int(f.read())
 
     for count_i in range(numberCycles):
         # 随机选取N个浏览器 N = numberOfProcesses
         try:
-            current_browser_id_list = random.choices(list(browser_id_set), k=maxProcesses)
+            if len(browser_id_set) <= maxProcesses:
+                current_browser_id_list = list(browser_id_set)
+            else:
+                current_browser_id_list = random.sample(browser_id_set, k=maxProcesses)
         except ValueError:
             current_browser_id_list = list(browser_id_set)
         send_data = {
@@ -236,12 +240,12 @@ def run(op_i, platformType_run, maxProcesses):
             'tag': 'running'
         }
         requests.post(url=f'http://fbmessage.v7.idcfengye.com/changeTag', json=send_data)
-        start_many_process(current_browser_id_list, model_list[operate_index_run],
-                           platformType_run)
+        start_many_process(current_browser_id_list, model_list[operate_index_run], count_i + 1,
+                           platformType_run, start_index_run)
         for repeat_i in current_browser_id_list:
             browser_id_set.remove(repeat_i)
-    # start_many_process(list(origin_browser_id_set), model_list[operate_index_run],
-    #                    platformType_run)
+        with open('static/keyword/ws_group_start.txt', 'w') as f:
+            f.write(f'{start_index_run + maxProcesses}\n')
 
     logger.info('操作已全部完成')
     # reset_complete_txt(platformType_run)

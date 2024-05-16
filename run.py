@@ -1,3 +1,4 @@
+# -- coding: utf-8 --
 import os
 import random
 import threading
@@ -160,6 +161,10 @@ def execution_method():
         """Ins获取用户粉丝"""
         run_ins.run(1, _current_function, _maxProcesses)
 
+    def get_self_comments(_browser_list=None, _maxProcesses=None, _current_function=None):
+        """获取主账号评论数据"""
+        listen_tiktok.run(1, _current_function, _maxProcesses)
+
     @change_status
     def run_with_args(run_method, run_browser_list: list, max_processes: int, func_value: str = None):
         """
@@ -186,6 +191,7 @@ def execution_method():
         'get_tk_fans': get_tk_fans,
         'ws_get_groupTel': get_groupTel_all,
         'ins_get_user_fans': ins_get_user_fans,
+        'get_self_comments': get_self_comments,
     }
     data = request.get_json()['data']
     logger.info(data)
@@ -252,4 +258,4 @@ def get_ips():
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0:12144', port=12144, debug=False)
+    app.run(host='127.0.0.1', port=12144, debug=True)
